@@ -1,35 +1,189 @@
-import React,{useState,useRef,useEffect} from 'react';
-import {createRoot} from 'react-dom/client';
-import {Heart,MapPin,ArrowUpRight,ChevronRight,Plus,Minus,LocateFixed,BookOpen,Compass,House,Gift,X,Download,Check,Volume2,Sparkles,ArrowLeft} from 'lucide-react';
-import {initial,places,randomTarget,findPet,dates,type Game} from './game';
-import './style.css';
-const cats=['奶油小橘','云朵小白','芝麻小灰'];
-function Cat({color=0,small=false}:{color?:number;small?:boolean}){return <svg className={small?'cat small':'cat'} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" aria-label={cats[color]} role="img"><ellipse cx="120" cy="199" rx="68" ry="10" fill="#725634" opacity=".12"/><path d="M174 160 Q226 169 214 131 Q207 116 195 131" fill="none" stroke={['#dfad69','#d3c7bd','#8e9295'][color]} strokeWidth="20" strokeLinecap="round"/><ellipse cx="122" cy="158" rx="55" ry="41" fill={['#f2cc94','#f5eee5','#b4b8b9'][color]}/><path d="M60 83 L55 25 Q57 16 67 22 L98 44 Q120 36 147 44 L179 22 Q190 18 186 39 L184 86" fill={['#efc78d','#f5eee5','#b4b8b9'][color]} stroke="#715c46" strokeWidth="3" strokeLinejoin="round"/><path d="M65 37 L70 64 L88 48 M173 36 L169 63 L153 49" fill="#dfa8a1"/><ellipse cx="121" cy="96" rx="68" ry="57" fill={['#f2cc94','#f5eee5','#b4b8b9'][color]} stroke="#715c46" strokeWidth="3"/><path d="M108 42 L113 62 M127 40 L127 59 M145 45 L139 62" stroke={['#dba967','#d3c7bd','#8e9295'][color]} strokeWidth="7" strokeLinecap="round"/><path d="M79 91 Q87 83 95 91 M147 91 Q155 83 163 91" fill="none" stroke="#514539" strokeWidth="4" strokeLinecap="round"/><ellipse cx="76" cy="107" rx="12" ry="7" fill="#e8a395" opacity=".65"/><ellipse cx="164" cy="107" rx="12" ry="7" fill="#e8a395" opacity=".65"/><path d="M116 103 Q121 99 126 103 L121 109 Z" fill="#8e6558"/><path d="M121 109 Q111 120 106 110 M121 109 Q130 120 136 110" fill="none" stroke="#715647" strokeWidth="2.5" strokeLinecap="round"/><path d="M63 105 L43 101 M63 114 L44 116 M179 105 L199 101 M179 114 L198 116" stroke="#715c46" strokeWidth="2" strokeLinecap="round"/><ellipse cx="101" cy="183" rx="17" ry="14" fill="#f8dfb7"/><ellipse cx="146" cy="183" rx="17" ry="14" fill="#f8dfb7"/><path d="M84 143 Q120 156 156 143" fill="none" stroke="#799b70" strokeWidth="8"/><circle cx="121" cy="152" r="8" fill="#ebbe62"/><path d="M121 148 V155" stroke="#8b713d" strokeWidth="2"/></svg>}
-function load():Game{try{const s=JSON.parse(localStorage.getItem('jagat-v1')||'null');if(s&&typeof s.name==='string'&&Number.isFinite(s.xp)&&Array.isArray(s.diaries)&&[0,1,2].includes(s.cat)&&(s.target===null||places.some(p=>p.id===s.target)))return {...initial,...s};}catch{}return initial;}
-function App(){const [game,setGame]=useState<Game>(load);const [tab,setTab]=useState('home');const [modal,setModal]=useState<string|null>(null);const [role,setRole]=useState<'A'|'B'>('A');const [toast,setToast]=useState('');const [name,setName]=useState(game.name);const [cat,setCat]=useState(game.cat);const [scale,setScale]=useState(1);const [pan,setPan]=useState({x:0,y:0});const pointers=useRef(new Map<number,{x:number;y:number}>());const last=useRef({x:0,y:0,d:0});const moved=useRef(false);const [drawing,setDrawing]=useState(false);
-useEffect(()=>{try{localStorage.setItem('jagat-v1',JSON.stringify(game));}catch{setToast('浏览器未允许存储，刷新后进度可能丢失');}},[game]);useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(t);}},[toast]);
-const level=Math.floor(game.xp/100)+1;const target=places.find(p=>p.id===game.target);const notify=(s:string)=>setToast(s);
-function begin(){if(!game.adopted){setModal('adopt');return;}if(!game.target){setGame(g=>({...g,target:randomTarget(),attempts:0}));notify('糟糕，小家伙偷偷溜出门了！快和 TA 一起寻找。');}setTab('map');}
-function search(id:string){if(moved.current)return;if(!game.target){notify('先点击「开启出逃冒险」，再一起找猫吧');return;}const next=findPet(game,id);setGame(next);if(id===game.target)setModal('success');else notify('这里只有一串小脚印…结合另一位的线索再找找！');}
-function drawDate(){let i=Math.floor(Math.random()*dates.length);if(i===game.dateCard)i=(i+1)%dates.length;setGame(g=>({...g,dateCard:i}));setModal('date');}
-async function saveCard(){setDrawing(true);try{const c=document.createElement('canvas');c.width=900;c.height=1200;const ctx=c.getContext('2d')!;ctx.fillStyle='#f8efd9';ctx.fillRect(0,0,900,1200);ctx.strokeStyle='#b77e54';ctx.lineWidth=5;ctx.strokeRect(35,35,830,1130);ctx.textAlign='center';ctx.fillStyle='#69513b';ctx.font='bold 30px sans-serif';ctx.fillText('JAGAT · 情侣寻猫事务所',450,112);ctx.font='bold 78px sans-serif';ctx.fillText('小猫出逃通缉令',450,230);const svg=document.querySelector('.share-cat svg')!;const data=new XMLSerializer().serializeToString(svg);const image=new Image();await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=reject;image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(data)});ctx.drawImage(image,210,270,480,440);ctx.font='bold 52px sans-serif';ctx.fillText(game.name,450,780);ctx.font='28px sans-serif';ctx.fillText('特征：可爱、贪吃、擅长假装没听见',450,855);ctx.fillText(target?`最后出没：心动小镇 · 等你来找`:'已被两位铲屎官成功逮捕',450,912);ctx.font='bold 32px sans-serif';ctx.fillText('悬赏：一根猫条 + 一个抱抱',450,1010);ctx.font='24px sans-serif';ctx.fillText('一起养，去冒险。♡',450,1100);const a=document.createElement('a');a.download='Jagat-小猫通缉令.png';a.href=c.toDataURL('image/png');a.click();notify('通缉令已生成，下载后可分享给 TA');}catch{notify('图片生成失败，请重试或使用浏览器截图');}finally{setDrawing(false);}}
-const pages={home:'我们的小日子',map:'心动小镇',diary:'奶盖的碎碎念',date:'今天也要约会'};
-return <div className="app"><aside className="sidebar"><a className="brand" onClick={()=>setTab('home')}><span className="brand-symbol">j</span> jagat<span className="brand-dot">●</span></a><div className="space-label">OUR LITTLE WORLD</div><nav>{[['home',House,'我们的小窝'],['map',Compass,'地图冒险'],['diary',BookOpen,'宠物日记'],['date',Gift,'约会盲盒']].map(([id,Icon,label])=>{const I=Icon as typeof House;return <button key={id as string} className={tab===id?'nav-item active':'nav-item'} onClick={()=>setTab(id as string)}><I size={20}/>{label as string}{id==='map'&&game.target&&<span className="tiny-dot"/>}</button>})}</nav><div className="sidebar-bottom"><div className="mini-pair">👩🏻 <Heart size={14} fill="#e6a59a"/> 👦🏻</div><strong>两个人，一只猫。</strong><p>把普通日子，过成小小冒险。</p><span>JAGAT PET ADVENTURE · MVP</span></div></aside><main><header><div className="breadcrumbs">我们的世界 <span>/</span> {pages[tab as keyof typeof pages]}</div><button className="couple-chip" onClick={()=>setModal('couple')}><span>👩🏻</span><Heart size={13} fill="#d99183"/><span>👦🏻</span><b>心动搭子</b><span className="online-dot"/></button></header>
-<div className="content"><div className="page-heading"><div><div className="eyebrow"><span/> A LITTLE LOVE, A LITTLE ADVENTURE</div><h1>{tab==='home'?<>一起养，<span>去冒险。</span></>:tab==='map'?<>下一站，<span>找到你。</span></>:tab==='diary'?<>小猫咪的<span>秘密日记。</span></>:<>把心动，<span>装进盲盒。</span></>}</h1><p>{tab==='home'?'你、我，还有一只爱出门的小猫。今天也一起创造回忆吧。':tab==='map'?'一人一半线索，拼出小猫藏身的地方。':tab==='diary'?'每一次找回，都值得被一只猫认真吐槽。':'约会不用想太多，和喜欢的人做一点有趣的小事。'}</p></div><div className="weather">☀️ <span>心动小镇 <b>24°</b><small>宜 · 一起出门</small></span></div></div>
-{tab==='home'&&<><section className="home-grid"><div className="pet-card"><div className="card-top"><span className="pill"><span className="online-dot"/>{game.adopted?'我们的宝贝':'等待一个家'}</span><button className="icon-button" aria-label="宠物心情" onClick={()=>notify(`${game.name}：今天的心情是想要三个抱抱！`)}><Volume2 size={18}/></button></div><div className="pet-scene"><span className="float-heart">♡</span><span className="sparkle s1">✧</span><span className="sparkle s2">✦</span><div className="speech">{game.target?'偷偷溜走，等你来找～':game.adopted?'今天也要一起玩呀！':'听说，你们在找一只小猫？'}</div><Cat color={game.cat}/><div className="scene-plant">🌿</div></div><div className="pet-info"><div><h2>{game.adopted?game.name:'遇见你的小猫'} <span>Lv.{level}</span></h2><p>{game.adopted?`${cats[game.cat]} · ${game.target?'外出探险中':'黏人精 / 猫条鉴赏家'}`:'一份陪伴，从一个名字开始'}</p></div><button className="round-heart" aria-label="摸摸小猫" onClick={()=>game.adopted?notify(`${game.name}舒服地打起了呼噜：摸摸收到 ♡`):setModal('adopt')}><Heart size={22}/></button></div><div className="growth-label"><span>成长值</span><b>{game.xp%100} <i>/ 100</i></b></div><div className="progress"><span style={{width:`${game.xp%100}%`}}/></div><div className="pet-footer"><span>✦ 每次找回小猫，获得 30 成长值</span><button onClick={()=>{setName(game.name);setCat(game.cat);setModal('adopt')}}>{game.adopted?'宠物档案':'立即领养'} <ChevronRight size={14}/></button></div></div>
-<div className="adventure-card"><div className="mini-map-bg"><MapArt/><div className="map-hint-pin">🐈<span>我在哪里呀？</span></div></div><div className="adventure-copy"><div className="eyebrow">CO-OP ADVENTURE <span className="new">双人协作</span></div><h2>糟糕，小猫又溜走了！</h2><p>带上 TA，跟着线索去小镇找找。<br/>这次，它又会躲在哪里呢？</p><button className="primary" onClick={begin}>{game.target?'继续寻找小猫':'开启出逃冒险'} <ArrowUpRight size={18}/></button><div className="adventure-note"><span>⌖</span> 4 个探索地点 <span>·</span> 两个人一起更好玩</div></div></div></section>
-<section className="section-heading"><h2>心动日常 <span>SMALL THINGS, BIG LOVE</span></h2><span>给平凡的一天，加点可爱</span></section><div className="daily-grid"><button className="daily-card pink" onClick={()=>setModal('couple')}><div className="daily-icon">💌</div><div><span className="kicker">BETTER TOGETHER</span><h3>今天也要贴贴</h3><p>切换角色，交换你的专属线索</p></div><ArrowUpRight size={20}/></button><button className="daily-card yellow" onClick={drawDate}><div className="daily-icon">🎁</div><div><span className="kicker">A LITTLE SURPRISE</span><h3>拆一份约会盲盒</h3><p>下一次约会，让心动来决定</p></div><ArrowUpRight size={20}/></button></div><div className="diary-preview"><div className="diary-stamp">📖</div><div><span className="kicker">PET'S SECRET DIARY</span><h3>{game.diaries.length?'小猫有话说':'小猫的第一篇日记，等你来解锁'}</h3><p>{game.diaries[0]?.text||'完成一次双人寻猫冒险，看看小家伙会怎么吐槽你们。'}</p></div><button onClick={()=>setTab('diary')}>翻开日记 <ArrowUpRight size={16}/></button></div></>}
-{tab==='map'&&<div className="map-layout"><div className="map-container"><div className="map-title"><span>⌖ 心动小镇</span><small>拖动探索 · 双指或滚轮缩放</small></div><div className="map-viewport" onWheel={e=>setScale(s=>Math.min(2.5,Math.max(.7,s-e.deltaY*.001)))} onPointerDown={e=>{if(!(e.target as Element).closest('button'))e.currentTarget.setPointerCapture(e.pointerId);pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY});moved.current=false;last.current={x:e.clientX,y:e.clientY,d:pointers.current.size===2?distance([...pointers.current.values()]):0};}} onPointerMove={e=>{if(!pointers.current.has(e.pointerId))return;const dx=e.clientX-last.current.x,dy=e.clientY-last.current.y;pointers.current.set(e.pointerId,{x:e.clientX,y:e.clientY});if(Math.abs(dx)+Math.abs(dy)>3)moved.current=true;if(pointers.current.size===2){const d=distance([...pointers.current.values()]);if(last.current.d)setScale(s=>Math.max(.7,Math.min(2.5,s*d/last.current.d)));last.current={x:e.clientX,y:e.clientY,d};}else{setPan(p=>({x:Math.max(-450,Math.min(450,p.x+dx)),y:Math.max(-400,Math.min(400,p.y+dy))}));last.current={x:e.clientX,y:e.clientY,d:0};}}} onPointerUp={e=>{pointers.current.delete(e.pointerId);const p=[...pointers.current.values()][0];if(p)last.current={...p,d:0};}} onPointerCancel={()=>pointers.current.clear()}><div className="map-world" style={{transform:`translate(${pan.x}px,${pan.y}px) scale(${scale})`}}><MapArt/>{places.map(p=><button key={p.id} className="location" style={{left:`${p.x}%`,top:`${p.y}%`}} onClick={()=>search(p.id)}><span>{p.icon}</span><b>{p.name}</b></button>)}<div className="home-marker">🏡<b>我们的小窝</b>{!game.target&&game.adopted&&<span>🐈</span>}</div></div></div><div className="map-controls"><button aria-label="放大" onClick={()=>setScale(s=>Math.min(2.5,s+.2))}><Plus size={18}/></button><button aria-label="缩小" onClick={()=>setScale(s=>Math.max(.7,s-.2))}><Minus size={18}/></button><button aria-label="地图复位" onClick={()=>{setScale(1);setPan({x:0,y:0})}}><LocateFixed size={18}/></button></div><div className="map-legend"><span className="online-dot"/> 虚拟小镇 · 无需真实定位</div></div><div className="clue-panel"><span className="kicker">TWO HEARTS, ONE MISSION</span><h2>{game.target?'寻猫小分队，集合！':'小猫准备好冒险啦'}</h2><p>同一台设备切换 A / B，轮流查看并分享线索。</p><div className="role-tabs"><button className={role==='A'?'selected':''} onClick={()=>setRole('A')}>👩🏻 角色 A</button><button className={role==='B'?'selected':''} onClick={()=>setRole('B')}>👦🏻 角色 B</button></div><div className="clue"><span>✉ {role} 的专属线索</span><p>{target?(role==='A'?target.clueA:target.clueB):'点击下方按钮，让小猫开始一次小小出逃。'}</p></div><p className="hint">💡 交流两条线索，然后点击地图上的地点寻找。{game.attempts>0&&` 已找过 ${game.attempts} 次。`}</p>{game.target?<button className="primary" onClick={()=>setModal('share')}>制作寻猫通缉令 <ArrowUpRight size={17}/></button>:<button className="primary" onClick={begin}>开启出逃冒险 <Compass size={17}/></button>}</div></div>}
-{tab==='diary'&&<><div className="diary-banner"><span>📒</span><div><h2>一只猫，两位铲屎官，{game.found} 次小冒险。</h2><p>我们的故事，都藏在这些碎碎念里。</p></div></div>{game.diaries.length?<div className="entries">{game.diaries.map((d,i)=><article className="entry" key={d.id}><span className="kicker">MEOW DIARY · {String(game.diaries.length-i).padStart(2,'0')}</span><h2>{['本喵才没有迷路','关于两位铲屎官的效率','一次有预谋的散步'][i%3]}</h2><p>{d.text}</p><footer>🐾 {game.name} 的亲笔记录 <span>{d.date}</span></footer></article>)}</div>:<div className="empty"><Cat color={game.cat}/><h2>本喵还没有故事可写</h2><p>一起完成第一次寻猫冒险，解锁专属吐槽日记。</p><button className="primary" onClick={begin}>去地图找点故事 <ArrowUpRight size={18}/></button></div>}</>}
-{tab==='date'&&<div className="date-page"><div className="gift-art">🎁<span>✦</span><i>♡</i></div><span className="kicker">LOVE IS IN THE LITTLE THINGS</span><h2>今天的心动，会是什么？</h2><p>不用攻略，不用纠结。<br/>拆开一份属于你们的小惊喜。</p><button className="primary" onClick={drawDate}><Gift size={18}/> 抽取约会任务</button>{game.dateCard!==null&&<button className="text-button" onClick={()=>setModal('date')}>查看上次抽到的任务 <ChevronRight size={16}/></button>}<div className="date-tags"><span>✧ 4 种心动灵感</span><span>♡ 两个人的小仪式</span><span>∞ 随时可以开始</span></div></div>}
-<footer className="page-footer"><span>jagat <Heart size={12}/> 把陪伴，变成一场小小冒险。</span><span>MADE FOR TWO, LOVED BY A CAT.</span></footer></div></main><nav className="mobile-nav">{[[House,'home','小窝'],[Compass,'map','冒险'],[BookOpen,'diary','日记'],[Gift,'date','盲盒']].map(([Icon,id,label])=>{const I=Icon as typeof House;return <button className={tab===id?'active':''} key={id as string} onClick={()=>setTab(id as string)}><I size={21}/>{label as string}</button>})}</nav>
-{modal&&<div className="modal-backdrop" onClick={()=>setModal(null)}><section className="modal" role="dialog" aria-modal="true" aria-label="互动面板" onClick={e=>e.stopPropagation()}><button className="close" aria-label="关闭" onClick={()=>setModal(null)}><X size={21}/></button>{modal==='adopt'&&<><span className="kicker">A NEW LITTLE FAMILY</span><h2>{game.adopted?'小猫的专属档案':'领养一份软乎乎的陪伴'}</h2><Cat color={cat}/><div className="cat-choices">{cats.map((c,i)=><button className={cat===i?'chosen':''} key={c} onClick={()=>setCat(i)}>{['🐱','🤍','🐈‍⬛'][i]} {c}</button>)}</div><label className="input-label">给小猫起个名字<input maxLength={12} value={name} onChange={e=>setName(e.target.value)} placeholder="最多 12 个字"/></label><button className="primary full" disabled={!name.trim()} onClick={()=>{setGame(g=>({...g,name:name.trim(),cat,adopted:true}));setModal(null);notify(game.adopted?'宠物档案已更新':'领养成功！你们的小家多了一位新成员 ♡')}}>{game.adopted?'保存档案':'欢迎加入我们的小家'} <Heart size={17}/></button></>}
-{modal==='couple'&&<><div className="modal-emoji">💌</div><h2>两个人，一起解谜</h2><p>这是同设备双人体验。轮流切换角色，各自读出线索，再一起决定去哪里寻找小猫。</p><div className="role-tabs"><button className={role==='A'?'selected':''} onClick={()=>setRole('A')}>👩🏻 我是角色 A</button><button className={role==='B'?'selected':''} onClick={()=>setRole('B')}>👦🏻 我是角色 B</button></div><div className="clue"><span>{role} 的心动留言</span><p>{role==='A'?'我负责发现小细节，你负责陪我走下去。':'收到！不管小猫跑多远，我们都一起找。'}</p></div><button className="primary full" onClick={()=>{setModal(null);begin()}}>一起出发 <ArrowUpRight size={18}/></button></>}
-{modal==='success'&&<><div className="success-stars">✦ ♡ ✦</div><Cat color={game.cat}/><h2>抓到一只小淘气！</h2><p>{game.name}：「我只是出来散散步，<br/>才没有在等你们接我回家呢。」</p><div className="reward"><Sparkles size={20}/> 成长值 +30 <span>Lv.{level}</span></div><button className="primary full" onClick={()=>{setModal(null);setTab('diary')}}>查看小猫的新日记 <BookOpen size={18}/></button><button className="text-button" onClick={()=>setModal('share')}>制作纪念分享卡 <ArrowUpRight size={16}/></button></>}
-{modal==='share'&&<><div className="wanted"><span className="kicker">JAGAT · 情侣寻猫事务所</span><h2>小猫出逃通缉令</h2><div className="share-cat"><Cat color={game.cat}/></div><h3>{game.name}</h3><p>特征：可爱、贪吃、擅长假装没听见</p><b>{game.target?'最后出没：心动小镇':'状态：已被铲屎官成功逮捕'}</b><hr/><p>悬赏：一根猫条 + 一个抱抱</p></div><button className="primary full" disabled={drawing} onClick={saveCard}><Download size={18}/>{drawing?'正在生成…':'保存通缉令图片'}</button><small className="download-note">生成 PNG 图片；手机可在浏览器下载中保存。</small></>}
-{modal==='date'&&game.dateCard!==null&&<><span className="kicker">YOUR LITTLE DATE</span><div className="modal-emoji">{dates[game.dateCard].icon}</div><span className="pill">{dates[game.dateCard].tag}</span><h2>{dates[game.dateCard].title}</h2><p className="date-description">{dates[game.dateCard].text}</p><button className="primary full" onClick={()=>{setModal(null);notify('约会任务已收下，快和 TA 约个时间吧 ♡')}}><Check size={18}/> 收下这份心动</button><button className="text-button" onClick={drawDate}>再拆一个看看 <Gift size={16}/></button></>}
-</section></div>}{toast&&<div className="toast" role="status">{toast}</div>}</div>}
-function distance(p:{x:number;y:number}[]){return Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)}
-function MapArt(){return <svg className="map-art" viewBox="0 0 800 620" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><pattern id="grass" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="32" fill="#e6ead6"/><circle cx="9" cy="12" r="1.2" fill="#ccd5b6"/><path d="M22 25l2-4 2 4" fill="none" stroke="#d2dbbf"/></pattern></defs><rect width="800" height="620" fill="url(#grass)"/><path d="M570 -30 Q455 140 565 255 T610 455 Q580 540 710 660" stroke="#a9d3d4" strokeWidth="96" fill="none"/><path d="M570 -30 Q455 140 565 255 T610 455 Q580 540 710 660" stroke="#c6e3dd" strokeWidth="70" fill="none"/><g stroke="#d5ceb5" strokeWidth="47" fill="none"><path d="M-20 205 Q210 180 375 215 T820 200"/><path d="M125 -20 Q175 210 150 360 T210 660"/><path d="M-10 452 Q230 390 400 450 T820 460"/><path d="M377 -20 L365 640"/></g><g stroke="#faf5e7" strokeWidth="36" fill="none"><path d="M-20 205 Q210 180 375 215 T820 200"/><path d="M125 -20 Q175 210 150 360 T210 660"/><path d="M-10 452 Q230 390 400 450 T820 460"/><path d="M377 -20 L365 640"/></g><path d="M505 199L606 203 M600 464L697 470" stroke="#bb956f" strokeWidth="45"/><path d="M505 199L606 203 M600 464L697 470" stroke="#e1bd8c" strokeWidth="34" strokeDasharray="5 5"/>{[[60,70],[290,85],[445,72],[710,100],[700,315],[440,320],[70,330],[265,350],[82,535],[440,550],[750,560],[300,560],[650,42]].map(([x,y],i)=><g key={i} transform={`translate(${x} ${y})`}><ellipse cy="24" rx="23" ry="10" fill="#b7c49d" opacity=".4"/><path d="M0 2V28" stroke="#a48b64" strokeWidth="7"/><circle cy="-3" r="24" fill={i%3?'#9fbc8a':'#bdcda0'}/><circle cx="-8" cy="-8" r="15" fill="#b3cb98"/></g>)}{[[233,110,'#efcfba'],[270,280,'#e5c2b4'],[470,130,'#e4c998'],[75,440,'#ddcfb3'],[450,390,'#edcbb0'],[270,500,'#d2d1b3'],[710,235,'#e7c0a5']].map(([x,y,c],i)=><g key={i} transform={`translate(${x} ${y})`}><rect x="-29" y="-22" width="60" height="52" rx="5" fill={c as string}/><path d="M-37 -20L0 -48 39 -20Z" fill={i%2?'#bf9e87':'#cbac88'}/><rect x="-8" y="6" width="15" height="24" rx="3" fill="#a88c74"/><rect x="13" y="-9" width="10" height="12" rx="2" fill="#fff0cd"/></g>)}<g fill="#fff" opacity=".6"><path d="M20 115q20-35 45-8q35-12 38 14H20"/><path d="M640 540q20-35 45-8q35-12 38 14H640"/></g><path d="M540 310q10-7 20 0m15 0q10-7 20 0M640 580q10-7 20 0" stroke="#94c1c4" fill="none" strokeWidth="3"/></svg>}
-
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+import { StrictMode, useState, useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  House,
+  Compass,
+  Heart,
+  CalendarDays,
+  ChartNoAxesCombined,
+  ShoppingBag,
+  Gift,
+  BookOpen,
+  Sparkles,
+  Settings2,
+  Users,
+} from "lucide-react";
+import { GameProvider, useGame } from "./store";
+import { Home } from "./pages/Home";
+import { Couple } from "./pages/Couple";
+import { Valuation } from "./pages/Valuation";
+import { Calendar } from "./pages/Calendar";
+import { Empty } from "./components/UI";
+import { Map } from "./pages/Map";
+import { Interact } from "./pages/Interact";
+import { Shop } from "./pages/Shop";
+import { House as HousePage } from "./pages/House";
+import { Rewards } from "./pages/Rewards";
+import { Share } from "./pages/Share";
+import { Story } from "./pages/Story";
+import { Ending } from "./pages/Ending";
+import { Demo } from "./pages/Demo";
+import { Celebration } from "./components/Celebration";
+import "./v3.css";
+const nav = [
+  ["home", "我们的小窝", House],
+  ["map", "情侣地图", Compass],
+  ["interact", "心动互动", Heart],
+  ["valuation", "宠物估值", ChartNoAxesCombined],
+  ["calendar", "养宠日历", CalendarDays],
+  ["shop", "团子商店", ShoppingBag],
+  ["rewards", "成长奖励", Gift],
+  ["story", "99天故事", BookOpen],
+  ["share", "分享纪念", Sparkles],
+  ["couple", "双人房间", Users],
+  ["demo", "Demo 面板", Settings2],
+] as const;
+function App() {
+  const [page, setPage] = useState(location.hash.slice(1) || "home");
+  const { state: s, role, setRole } = useGame();
+  function go(p: string) {
+    location.hash = p;
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+  useEffect(() => {
+    const fn = () => setPage(location.hash.slice(1) || "home");
+    window.addEventListener("hashchange", fn);
+    return () => window.removeEventListener("hashchange", fn);
+  }, []);
+  const allowed = ["home", "couple", "demo", "story", "share"];
+  const locked = s.couple?.status !== "bound" && !allowed.includes(page);
+  return (
+    <div className="app">
+      <Celebration />
+      <aside className="sidebar">
+        <a className="brand" onClick={() => go("home")}>
+          <span>j</span>jagat<i>●</i>
+        </a>
+        <div className="brand-caption">99天养宠计划</div>
+        <span className="nav-caption">OUR LITTLE WORLD</span>
+        <nav>
+          {nav.map(([id, label, I]) => (
+            <button
+              className={`nav-item ${page === id ? "active" : ""}`}
+              key={id}
+              onClick={() => go(id)}
+            >
+              <I size={19} />
+              <span>{label}</span>
+              {id === "map" && s.adventure?.status === "active" && <i />}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <span>👩🏻 ♡ 👦🏻</span>
+          <b>两个人，一只恋爱团子。</b>
+          <p>把陪伴，养成独一份的爱。</p>
+          <small>JAGAT · 99 DAYS OF LOVE</small>
+        </div>
+      </aside>
+      <main>
+        <header>
+          <div className="breadcrumbs">
+            我们的世界 <span>/</span>
+            {nav.find((n) => n[0] === page)?.[1] || "我们的小窝"}
+          </div>
+          <div className="header-right">
+            <span className="demo-label">DEMO · 无真实支付</span>
+            <div className="role-switch" aria-label="切换玩家">
+              {(["A", "B"] as const).map((r) => (
+                <button
+                  className={role === r ? "active" : ""}
+                  onClick={() => setRole(r)}
+                  key={r}
+                >
+                  {r === "A" ? "👩🏻" : "👦🏻"} <b>{r}</b>
+                </button>
+              ))}
+            </div>
+          </div>
+        </header>
+        <div className="content">
+          {locked ? (
+            <Empty
+              icon="💌"
+              title="先一起领养，再开始冒险"
+              text="由 A 创建房间，切换 B 接受，再切换 A 确认。"
+            >
+              <button
+                className="primary"
+                onClick={() => go(s.couple ? "couple" : "home")}
+              >
+                去共同领养
+              </button>
+            </Empty>
+          ) : page === "home" ? (
+            <Home go={go} />
+          ) : page === "couple" ? (
+            <Couple go={go} />
+          ) : page === "valuation" ? (
+            <Valuation />
+          ) : page === "calendar" ? (
+            <Calendar />
+          ) : page === "map" ? (
+            <Map go={go} />
+          ) : page === "interact" ? (
+            <Interact />
+          ) : page === "shop" ? (
+            <Shop go={go} />
+          ) : page === "house" ? (
+            <HousePage />
+          ) : page === "rewards" ? (
+            <Rewards />
+          ) : page === "share" ? (
+            <Share />
+          ) : page === "story" ? (
+            <Story go={go} />
+          ) : page === "ending" ? (
+            <Ending key={role} go={go} />
+          ) : page === "demo" ? (
+            <Demo go={go} />
+          ) : (
+            <Empty title="这一页还没有故事" text="请使用导航返回小窝。">
+              <button className="primary" onClick={() => go("home")}>
+                回小窝
+              </button>
+            </Empty>
+          )}
+          <footer className="page-footer">
+            <span>jagat ♡ 把陪伴，变成小小冒险。</span>
+            <span>LOCAL DEMO · NOT A CASH OFFER</span>
+          </footer>
+        </div>
+      </main>
+      <nav className="mobile-nav">
+        {nav
+          .filter((n) =>
+            ["home", "map", "interact", "shop", "demo"].includes(n[0]),
+          )
+          .map(([id, label, I]) => (
+            <button
+              key={id}
+              className={page === id ? "active" : ""}
+              onClick={() => go(id)}
+            >
+              <I size={21} />
+              <span>{id === "demo" ? "更多" : label.slice(0, 2)}</span>
+            </button>
+          ))}
+      </nav>
+    </div>
+  );
+}
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <GameProvider>
+      <App />
+    </GameProvider>
+  </StrictMode>,
+);
