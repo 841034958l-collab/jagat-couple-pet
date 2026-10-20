@@ -1,55 +1,53 @@
-# 不需要已有服务器的部署方式
+# 免费演示部署：Render + Supabase
 
-新版邀请依赖共享后端。请使用一个同时运行前端和API的站点；GitHub Pages只能托管静态文件，无法运行数据库与API。
+前端和API由同一个Render **Free Web Service**提供，数据存Supabase **Free PostgreSQL**，不需要Render磁盘。平台额度、休眠和暂停规则可能变化，请以确认页面显示为准；若没有Free选项，停止创建，不要选付费方案。
 
-## Render：按页面点击
+## 1. 保留Supabase连接参数
 
-1. 打开 https://render.com 并使用GitHub登录。
-2. 点击 [此仓库的部署入口](https://render.com/deploy?repo=https://github.com/841034958l-collab/jagat-couple-pet)。也可在Dashboard点击 **New → Blueprint**，选择 `841034958l-collab/jagat-couple-pet`。
-3. 授权Render读取此仓库，确认使用`main`分支和仓库根目录`render.yaml`。
-4. 检查将创建的服务：`jagat-couple-pet`，Starter方案，1GB持久化数据盘。**这是可能收费的配置，先看平台当时显示的价格，再自行确认。**不要为了免费改成临时文件系统后声称数据可靠保存。
-5. 点击创建/部署，等待服务状态变成 **Live**。首次会执行`npm ci --include=dev && npm run build`，再运行`npm start`。
-6. 点击Render服务页面提供的HTTPS网址，打开「我」设置自己的资料，再创建房间。
-7. 将游戏内生成的邀请链接发给另一位，对方用自己的手机打开、设置资料、点击接受。房主页面会自动更新，无需再次确认。
-8. 后续推送`main`可由Render自动部署。GitHub Actions只检查测试与构建，不再把后端版本发布到Pages。
+项目状态Healthy后：
 
-本代码不创建Render账号、不接触信用卡、不自动购买服务。实际网址只有创建成功后才存在，请以Render页面显示的地址为准。
+1. Connect → Direct（Connection string）。
+2. Connection Method选择 **Session pooler**，Type保持 **URI**。
+3. 端口通常5432。复制完整`postgresql://…` URI；可保留`[YOUR-PASSWORD]`占位符。
+4. 找到创建项目时保存的数据库密码。下一步在Render单独填写，不必手动处理密码特殊字符。
 
-## 参数已经预置
+不要点付费IPv4 add-on，不需要重置已有密码，不要把连接串或密码发到聊天或提交GitHub。
 
-| 变量          | 值/作用                                                                                                   |
-| ------------- | --------------------------------------------------------------------------------------------------------- |
-| NODE_VERSION  | 24，内置node:sqlite                                                                                       |
-| NODE_ENV      | production，启用Secure Cookie并服务dist资源                                                               |
-| DATABASE_PATH | /var/data/jagat.sqlite，必须在持久化盘                                                                    |
-| DEMO_MODE     | true：只给房主开放剧情日期演示；false：服务端自然日，不开放模拟审核/广告                                  |
-| PUBLIC_ORIGIN | 通常无需填写，默认使用Render自动提供的RENDER_EXTERNAL_URL；自定义域名时设置为实际HTTPS源，不带路径/尾斜杠 |
-| PORT          | 平台注入，无需手动覆盖                                                                                    |
+## 2. 创建免费Render服务
 
-身份是浏览器会话，支持两台设备各自参与，但尚无正式登录/账号找回。Cookie清除、浏览器切换后不能自行恢复原身份。请先作为小范围演示，不要录入敏感信息。
+1. 打开 [Render部署入口](https://render.com/deploy?repo=https://github.com/841034958l-collab/jagat-couple-pet)，使用GitHub登录。
+2. 连接此仓库，确认main分支及根目录render.yaml。也可通过New → Blueprint选择仓库。
+3. 检查Web Service方案必须为 **Free**，没有持久化Disk。当前配置不会创建付费数据库或付费磁盘。
+4. 在环境变量输入区填写：
 
-## 自有服务器 / Docker 备选
+| 名称              | 内容                                            |
+| ----------------- | ----------------------------------------------- |
+| DATABASE_URL      | 刚复制的Session pooler完整URI，可保留密码占位符 |
+| DATABASE_PASSWORD | 你创建Supabase项目时保存的原始数据库密码        |
 
-仓库包含Dockerfile：
+这两个字段只存在服务端。独立密码字段会覆盖URI中的密码并自动编码，包含@、%、/等字符也无需手工转换。不要使用VITE_DATABASE_URL等前端变量名。
 
-```bash
-docker build -t jagat-pet .
-docker volume create jagat-data
-docker run -d --name jagat-pet --restart unless-stopped \
-  -p 3000:3000 \
-  -v jagat-data:/data \
-  -e PUBLIC_ORIGIN=https://your-real-domain.example \
-  jagat-pet
-```
+5. 确认免费方案后点击创建/部署，等待 **Live**。
+6. 使用Render显示的HTTPS网址，设置个人资料、创建房间、将游戏内邀请发给另一位。
+7. 另一位在自己的手机或独立浏览器打开，设置资料并接受。房间立即成立，房主页面自动同步。
 
-再使用托管反向代理或服务器现有HTTPS代理把实际域名转到3000端口。上面域名是占位符，必须换成自己的域名。生产Cookie是Secure，公网必须走HTTPS。当前仅支持单实例；不能对一个SQLite文件直接做跨机器扩容。
+数据库表由服务启动自动创建在私有jagat_private schema。它不在默认Data API公开schema中，schema和表也不会向PUBLIC授予权限。无需去SQL Editor粘贴未知SQL，不需要anon key或service_role key。
 
-## 常见情况
+如果Blueprint入口要求付费而不给Free选项，可改用New → Web Service，选择同一仓库、Node运行时、main分支，Build填`npm ci --include=dev && npm run build`，Start填`npm start`，选择Free，再设置上述变量与NODE_VERSION=24、NODE_ENV=production、DEMO_MODE=true。仍没有Free选项时不要确认收费。
 
-- **GitHub Pages显示旧版**：正常，新版部署目标改成共享服务器。使用Render实际网址。
-- **共享服务暂未连接**：访问了只有静态前端的地址，或API服务没有启动。查看Render日志与`/api/health`。
-- **请求来源不匹配**：检查PUBLIC_ORIGIN与浏览器地址栏的协议、域名、端口一致；自定义域名时更新该值。
-- **不能接受自己的邀请**：使用另一台手机、不同浏览器或独立无痕窗口；同一浏览器多个普通标签是同一人。
-- **邀请过期/失效**：房主在双人房间重新生成，新链接会撤销旧链接。
-- **对方没立即看到更新**：正常前台约2秒轮询；断网时显示重连提示，恢复网络后同步。
-- **重启后房间消失**：检查DATABASE_PATH是否落在已挂载的持久化盘。请勿使用Render临时目录或内存数据库做公网持久化。
+## 3. 常见情况
+
+- **首次打开很慢**：免费服务休眠后的冷启动可能较慢，等待平台唤醒，不要反复创建项目。
+- **部署时数据库连接失败**：确认Supabase项目Healthy、Session pooler URI、端口5432、数据库密码正确。不要把完整日志中可能含有的连接参数发到公开位置。
+- **TLS证书验证失败**：从Supabase官方控制台获取数据库CA证书，以实际多行PEM填入服务端DATABASE_CA_CERT。不要关闭TLS验证。
+- **Supabase项目暂停**：先在Supabase恢复项目，再重新部署/启动Render服务。免费计划不等于永远在线承诺。
+- **自己打不开自己的邀请**：设计如此。请另一台设备/独立浏览器打开；同一浏览器普通标签共享身份。
+- **无法接受邀请**：检查是否过期、被撤销或已经加入其他房间；房主可重新生成。
+- **Render更新后进度消失**：检查是否配置了正确DATABASE_URL。生产环境没有数据库配置会拒绝启动，不应使用临时SQLite替代云数据库。
+- **Cookie清除后身份丢失**：当前仍是浏览器会话，无正式账号恢复功能。请勿录入敏感信息。
+
+创建Render服务和填入凭据需要你自己完成。代码适配、测试通过不代表已连接你的Supabase项目或网站已上线，以Render服务状态与实际两台设备验收为准。
+
+## 自管服务器备选
+
+Dockerfile仍可构建Node服务。推荐通过服务器安全环境变量注入DATABASE_URL、DATABASE_PASSWORD及PUBLIC_ORIGIN，不把凭据写进镜像或命令历史。自管SQLite仅适用于有持久化盘的单实例场景，不是Render免费部署方案。

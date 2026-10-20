@@ -5,7 +5,13 @@ import type { AddressInfo } from "node:net";
 import type { SessionSnapshot } from "../src/services/session-types";
 import { uid } from "../src/domain/engine";
 async function fixture(options: { demo?: boolean } = {}) {
-  const app = createApp({ dbPath: ":memory:", ...options });
+  const app = await createApp({
+    dbPath: ":memory:",
+    databaseURL: process.env.TEST_DATABASE_URL,
+    schema: `jagat_test_${uid().replaceAll("-", "")}`,
+    dropSchemaOnClose: true,
+    ...options,
+  });
   await new Promise<void>((r) => app.server.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
   function client() {
@@ -40,7 +46,7 @@ async function fixture(options: { demo?: boolean } = {}) {
     client,
     async close() {
       await new Promise<void>((r) => app.server.close(() => r()));
-      app.db.close();
+      await app.storage.close();
     },
   };
 }
@@ -188,7 +194,10 @@ test("邀请过期、重新生成使旧链接失效、已加入其他房间不�
   const f = await fixture();
   try {
     const { a, b, token } = await room(f);
-    f.app.db.prepare("UPDATE invites SET expires_at=?").run(Date.now() - 1000);
+    await f.app.storage.run(
+      "UPDATE invites SET expires_at=?",
+      Date.now() - 1000,
+    );
     assert.equal(
       (await b.call("/api/invites/" + token)).data.status,
       "expired",
@@ -273,7 +282,7 @@ test("文件存档与会话在服务重启后恢复", async () => {
   const { join } = await import("node:path");
   const dir = mkdtempSync(join(tmpdir(), "jagat-persist-"));
   const file = join(dir, "game.sqlite");
-  let app = createApp({ dbPath: file });
+  let app = await createApp({ dbPath: file });
   async function listen() {
     await new Promise<void>((r) => app.server.listen(0, "127.0.0.1", r));
     return `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
@@ -294,8 +303,8 @@ test("文件存档与会话在服务重启后恢复", async () => {
       }),
     });
     await new Promise<void>((r) => app.server.close(() => r()));
-    app.db.close();
-    app = createApp({ dbPath: file });
+    await app.storage.close();
+    app = await createApp({ dbPath: file });
     base = await listen();
     const response = await fetch(base + "/api/session", {
       headers: { Cookie: cookie },
@@ -305,7 +314,7 @@ test("文件存档与会话在服务重启后恢复", async () => {
     assert.equal(value.me.bio, "我的资料");
   } finally {
     await new Promise<void>((r) => app.server.close(() => r()));
-    app.db.close();
+    await app.storage.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -345,15 +354,17 @@ test("非演示模式按服务端时间推进，不能请求跳日", async () =>
   try {
     const { a, b, token } = await room(f);
     await b.call("/api/invites/" + token + "/accept", "POST", {});
-    const saved = f.app.db.prepare("SELECT id,state FROM rooms").get() as {
+    const saved = (await f.app.storage.get("SELECT id,state FROM rooms")) as {
       id: string;
       state: string;
     };
     const s = JSON.parse(saved.state);
     s.couple.boundAt = new Date(Date.now() - 2 * 86400000).toISOString();
-    f.app.db
-      .prepare("UPDATE rooms SET state=? WHERE id=?")
-      .run(JSON.stringify(s), saved.id);
+    await f.app.storage.run(
+      "UPDATE rooms SET state=? WHERE id=?",
+      JSON.stringify(s),
+      saved.id,
+    );
     const view = await a.call("/api/session");
     assert.equal(view.data.state.demoDay, 3);
     assert.equal(

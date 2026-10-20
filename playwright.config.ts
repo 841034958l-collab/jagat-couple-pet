@@ -16,9 +16,13 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev -- --port 5174 --strictPort",
-    url: "http://127.0.0.1:5174",
+    url: "http://127.0.0.1:5174/api/health",
     reuseExistingServer: false,
-    env: { API_PORT: "5176", DATABASE_PATH: ":memory:" },
+    env: {
+      API_PORT: "5176",
+      DATABASE_PATH: ":memory:",
+      DATABASE_URL: process.env.E2E_DATABASE_URL || "",
+    },
   },
   reporter: "list",
 });

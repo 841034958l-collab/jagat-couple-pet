@@ -1,6 +1,6 @@
 {
   "name": "jagat-couple-pet",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,11 +13,13 @@
     "dev:web": "vite --host 0.0.0.0",
     "dev:server": "tsx watch server/index.ts",
     "start": "NODE_ENV=production tsx server/index.ts",
-    "test:server": "tsx --test server/app.test.ts",
-    "test:production": "tsx scripts/smoke-production.ts"
+    "test:server": "tsx --test server/*.test.ts",
+    "test:production": "tsx scripts/smoke-production.ts",
+    "test:postgres": "tsx --test server/app.test.ts server/postgres.integration.ts"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
+    "pg": "^8.23.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsx": "^4.23.15"
@@ -27,6 +29,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",

@@ -6,7 +6,7 @@
 
 - **个人身份**：每个浏览器有服务端分配的独立会话；「我」只展示和修改自己的昵称、头像、城市、简介。
 - **真正的邀请流程**：邀请链接读取房主与宠物信息，受邀者先完善自己的资料，再明确接受；接受后双方自动看到成立的房间，无需房主再确认。
-- **共享宠物与装扮**：SQLite服务端存储房间、宠物、背包与小屋，双方都可以换装和布置，前台约2秒同步。
+- **共享宠物与装扮**：PostgreSQL（公网）或SQLite（本地）服务端存储房间、宠物、背包与小屋，双方都可以换装和布置，前台约2秒同步。
 - **服务端权限**：身份从HttpOnly Cookie会话推导，客户端不能传角色冒充另一位；只允许房间成员修改该房间。
 - **原有玩法保留**：喂养、成长品质、估值、地图寻宠、互动、未来信、商店、里程碑、日历、分享和毕业结局。
 
@@ -33,17 +33,22 @@ npm run dev
 
 同一局域网手机测试时，请用电脑局域网IP访问5173并生成邀请，使另一台设备能够访问链接。公网体验应使用下方完整部署方式，不公开开发服务器。
 
-## 最简单的公网部署：Render
+## 免费演示部署：Render Free + Supabase Free
 
-已准备 [render.yaml](render.yaml)，一次部署前端、API和持久化数据盘。详细点击步骤见 [部署指南](docs/deploy.md)。
+已提供免费的Web服务配置 [render.yaml](render.yaml)，不创建付费磁盘。数据保存在你自己创建的Supabase PostgreSQL项目中。详细操作见 [部署指南](docs/deploy.md)。
 
 [打开 Render 部署入口](https://render.com/deploy?repo=https://github.com/841034958l-collab/jagat-couple-pet)
 
-需要你使用GitHub账号登录Render、连接此仓库并确认创建服务。配置使用Starter服务和1GB持久化盘，**会涉及平台费用，请在确认页面核对价格**。这里没有替你创建收费服务。
+创建时选择 **Free**，填写两个服务端环境变量：
 
-部署成功后，使用Render实际提供的HTTPS地址邀请对方；GitHub Pages旧地址不具备共享API，不能完成新版双人邀请。
+- `DATABASE_URL`：Supabase Connect → Direct → **Session pooler** → URI，保留密码占位符即可。
+- `DATABASE_PASSWORD`：创建Supabase项目时保存的数据库密码，原样填写；代码会安全编码特殊字符。
 
-已将原Pages自动发布流程改为测试与构建检查，避免把需要后端的新版错误发布为纯静态网站。接入Render后由Render自动部署后续`main`提交。
+密码和连接串仅填入Render环境变量，不发到聊天、不提交GitHub、不使用VITE_前缀。服务启动会自动在私有`jagat_private` schema建表，无需手动粘贴SQL或公开Data API表。
+
+免费服务可能休眠、冷启动，数据库也有额度/暂停限制，以平台当前显示为准。若页面没有Free选项，不要改选付费方案。尚未创建托管账号或外部服务，不声称当前已有可访问的新网址。
+
+使用Render实际提供的HTTPS网址邀请对方。GitHub Pages不能运行这个后端；GitHub Actions检查构建与测试，后续由Render部署`main`提交。
 
 ## 玩法入口
 
@@ -87,28 +92,40 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 
 E2E启动独立的内存数据库API5176与前端5174，使用两个独立浏览器上下文，不依赖开发数据库或本机已有存档。测试验证身份隔离、邀请自动成立、共享装扮、两设备寻宠、秘密任务与三种终局。
 
-## 生产启动与持久化
+## 启动与数据库
 
 ```bash
-npm ci
+npm ci --include=dev
 npm run build
-# HTTPS反向代理后使用实际公网域名，不带末尾斜杠
-PUBLIC_ORIGIN=https://your-real-domain.example DATABASE_PATH=/persistent/jagat.sqlite PORT=3000 npm start
+# 在托管平台安全设置DATABASE_URL和DATABASE_PASSWORD，然后运行
+npm start
 ```
 
-`npm start`由同一个Node服务提供构建产物和API。Render自动提供`RENDER_EXTERNAL_URL`，通常无需手填PUBLIC_ORIGIN。
+设置`DATABASE_URL`即使用PostgreSQL；`DATABASE_PASSWORD`可独立覆盖URI密码，省去手动URL编码。若不设置独立密码字段，URI中必须已有正确编码的密码。远程数据库始终验证TLS证书；如官方数据库CA需要额外配置，使用`DATABASE_CA_CERT`，不要关闭验证。
 
-- SQLite文件、WAL、SHM均须放在持久化盘；默认开发路径为`.data/jagat.sqlite`，已Git忽略。
-- 使用**单实例**，当前SQLite不能直接支持多实例共享写入。多实例需要迁移到共享数据库。
-- HttpOnly、SameSite=Lax Cookie会话有效180天；生产设置Secure。清除Cookie或换设备会得到新身份，现阶段没有密码/短信/Jagat登录和会话找回。
-- 服务端每次写入做成员检查与数据库事务。拒绝外部Origin、自己接受自己、过期/撤销邀请、重复绑定和第三人访问。
-- 不将数据库文件、Cookie、真实个人信息或凭据提交到GitHub。旧版LocalStorage演示存档不自动导入，避免错误绑定身份。
+- Render免费配置不使用DATABASE_PATH和本机磁盘，重启不会丢失Supabase中的房间、资料或会话。
+- 本地`npm run dev`在未设置DATABASE_URL时使用`.data/jagat.sqlite`，文件已Git忽略。本地存档不自动上传到Supabase。
+- 自管SQLite生产部署必须显式设置DATABASE_PATH并保证持久化；没有数据库配置时生产启动会失败，避免悄悄写入临时磁盘。
+- PostgreSQL写入使用事务和跨连接池的应用锁，避免邀请抢占和丢失更新。这是小规模Demo的串行策略，大规模服务需细化到房间行锁和数据库级频控。
+- Cookie会话有效180天，HttpOnly、SameSite=Lax，生产Secure。没有正式登录、会话找回或跨设备登录同一账号。
+
+PostgreSQL集成测试（必须使用独立测试数据库，测试会创建并清除随机jagat_test_ schema）：
+
+```bash
+# 在本机安全设置TEST_DATABASE_URL后
+npm run test:postgres
+# 浏览器测试可用E2E_DATABASE_URL指定独立PostgreSQL测试库
+npm run test:e2e
+```
+
+CI会使用临时PostgreSQL容器执行这些检查，不需要你的Supabase密码。
 
 ## 目录
 
 ```text
 server/
-  app.ts          HTTP API、会话、房间、邀请、资料、权限、SQLite
+  app.ts          HTTP API、会话、房间、邀请、资料与权限
+  storage.ts      PostgreSQL / SQLite、事务与TLS验证
   index.ts        生产启动、静态资源
   dev.ts          一键启动前后端
   app.test.ts     HTTP权限、并发、持久化集成测试
@@ -120,7 +137,7 @@ src/
   components/     宠物与地图插画、图表、UI
   v3.css          移动端样式
  e2e/             双浏览器自动化
- render.yaml      Render前后端+持久化盘部署
+ render.yaml      Render免费Web服务，无付费磁盘
  Dockerfile       自有服务器容器部署
 ```
 

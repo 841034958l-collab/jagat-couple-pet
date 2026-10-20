@@ -3,10 +3,10 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { DatabaseSync } from "node:sqlite";
+import { createStorage } from "./storage";
 import { randomBytes, createHash } from "node:crypto";
-import { mkdirSync, readFileSync, existsSync, statSync } from "node:fs";
-import { resolve, dirname, extname, sep } from "node:path";
+import { readFileSync, existsSync, statSync } from "node:fs";
+import { resolve, extname, sep } from "node:path";
 import {
   initialState,
   reduceCommand,
@@ -43,31 +43,33 @@ function check(ok: unknown, message: string, status = 400): asserts ok {
 }
 
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
-export function createApp(options: {
+export async function createApp(options: {
+  databaseURL?: string;
+  databaseCA?: string;
+  databasePassword?: string;
+  schema?: string;
+  dropSchemaOnClose?: boolean;
   dbPath: string;
   publicOrigin?: string;
   staticDir?: string;
   demo?: boolean;
   secureCookie?: boolean;
 }) {
-  if (options.dbPath !== ":memory:")
-    mkdirSync(dirname(resolve(options.dbPath)), { recursive: true });
-  const db = new DatabaseSync(options.dbPath);
-  db.exec(`PRAGMA journal_mode=WAL;PRAGMA foreign_keys=ON;
- CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,profile TEXT NOT NULL,room_id TEXT);
- CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires_at INTEGER NOT NULL);
- CREATE TABLE IF NOT EXISTS rooms(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,partner_id TEXT,state TEXT NOT NULL);
- CREATE TABLE IF NOT EXISTS invites(token_hash TEXT PRIMARY KEY,room_id TEXT NOT NULL,expires_at INTEGER NOT NULL);
- `);
-  const user = (id: string) =>
-    db.prepare("SELECT * FROM users WHERE id=?").get(id) as UserRow | undefined;
-  const room = (id: string) =>
-    db.prepare("SELECT * FROM rooms WHERE id=?").get(id) as RoomRow | undefined;
-  const putRoom = (r: RoomRow, state: GameState) =>
-    db
-      .prepare("UPDATE rooms SET state=?,partner_id=? WHERE id=?")
-      .run(JSON.stringify(state), r.partner_id, r.id);
-  function readState(r: RoomRow): GameState {
+  const storage = await createStorage(options);
+  const user = async (id: string) =>
+    (await storage.get("SELECT * FROM users WHERE id=?", id)) as
+      UserRow | undefined;
+  const room = async (id: string) =>
+    (await storage.get("SELECT * FROM rooms WHERE id=?", id)) as
+      RoomRow | undefined;
+  const putRoom = async (r: RoomRow, state: GameState) =>
+    await storage.run(
+      "UPDATE rooms SET state=?,partner_id=? WHERE id=?",
+      JSON.stringify(state),
+      r.partner_id,
+      r.id,
+    );
+  async function readState(r: RoomRow): Promise<GameState> {
     const state = JSON.parse(r.state) as GameState;
     if (options.demo === false && state.couple?.status === "bound") {
       const day = naturalDay(state.couple.boundAt, new Date().toISOString());
@@ -82,14 +84,15 @@ export function createApp(options: {
           quality: qualityScore(state.pet!.quality),
           reason: "服务端自然日推进",
         });
-        putRoom(r, state);
+        await putRoom(r, state);
         r.state = JSON.stringify(state);
       }
     }
     return state;
   }
   const profile = (u: UserRow) => JSON.parse(u.profile) as Profile;
-  const getRoom = (u: UserRow) => (u.room_id ? room(u.room_id) : undefined);
+  const getRoom = async (u: UserRow) =>
+    u.room_id ? await room(u.room_id) : undefined;
   const roleOf = (u: UserRow, r: RoomRow): Role => {
     check(
       r.owner_id === u.id || r.partner_id === u.id,
@@ -98,10 +101,10 @@ export function createApp(options: {
     );
     return r.owner_id === u.id ? "A" : "B";
   };
-  const view = (u: UserRow): SessionSnapshot => {
-    const r = getRoom(u);
+  const view = async (u: UserRow): Promise<SessionSnapshot> => {
+    const r = await getRoom(u);
     const role = r ? roleOf(u, r) : "A";
-    const state = r ? readState(r) : initialState();
+    const state = r ? await readState(r) : initialState();
     if (!r)
       state.users = [
         {
@@ -122,21 +125,21 @@ export function createApp(options: {
       demo: options.demo !== false,
     };
   };
-  function session(req: IncomingMessage, res: ServerResponse) {
+  async function session(req: IncomingMessage, res: ServerResponse) {
     const token = (req.headers.cookie ?? "")
       .split(";")
       .map((s) => s.trim())
       .find((s) => s.startsWith("jagat_session="))
       ?.slice(14);
     const row = token
-      ? (db
-          .prepare(
-            "SELECT user_id FROM sessions WHERE token_hash=? AND expires_at>?",
-          )
-          .get(hash(token), Date.now()) as { user_id: string } | undefined)
+      ? ((await storage.get(
+          "SELECT user_id FROM sessions WHERE token_hash=? AND expires_at>?",
+          hash(token),
+          Date.now(),
+        )) as { user_id: string } | undefined)
       : undefined;
     if (row) {
-      const u = user(row.user_id);
+      const u = await user(row.user_id);
       if (u) return u;
     }
     const id = uid(),
@@ -149,11 +152,13 @@ export function createApp(options: {
       bio: "",
       createdAt: new Date().toISOString(),
     };
-    db.prepare("INSERT INTO users(id,profile) VALUES (?,?)").run(
+    await storage.run(
+      "INSERT INTO users(id,profile) VALUES (?,?)",
       id,
       JSON.stringify(p),
     );
-    db.prepare("INSERT INTO sessions VALUES (?,?,?)").run(
+    await storage.run(
+      "INSERT INTO sessions VALUES (?,?,?)",
       hash(secret),
       id,
       Date.now() + 180 * 86400000,
@@ -162,7 +167,7 @@ export function createApp(options: {
       "Set-Cookie",
       `jagat_session=${secret}; HttpOnly; Path=/; SameSite=Lax; Max-Age=15552000${options.secureCookie ? "; Secure" : ""}`,
     );
-    return user(id)!;
+    return (await user(id))!;
   }
   async function body(req: IncomingMessage) {
     let data = "";
@@ -191,6 +196,7 @@ export function createApp(options: {
       res.setHeader("X-Frame-Options", "SAMEORIGIN");
       const url = new URL(req.url || "/", "http://localhost");
       if (url.pathname === "/api/health") {
+        await storage.get("SELECT 1 AS ready");
         json(res, { ok: true });
         return;
       }
@@ -239,254 +245,272 @@ export function createApp(options: {
           415,
         );
       }
-      const u = session(req, res);
-      let limiter = rate.get(u.id);
-      if (!limiter || Date.now() - limiter.start > 60000) {
-        limiter = { count: 0, start: Date.now() };
-        rate.set(u.id, limiter);
-      }
-      check(++limiter.count <= 180, "操作过于频繁，请稍后重试", 429);
-      if (rate.size > 5000) {
-        for (const [key, v] of rate)
-          if (Date.now() - v.start > 60000) rate.delete(key);
-      }
-      if (req.method === "GET" && url.pathname === "/api/session") {
-        json(res, view(u));
-        return;
-      }
-      const inviteMatch = url.pathname.match(
-        /^\/api\/invites\/([a-zA-Z0-9-]+)(\/accept)?$/,
-      );
-      if (req.method === "GET" && inviteMatch) {
-        const i = db
-          .prepare("SELECT room_id,expires_at FROM invites WHERE token_hash=?")
-          .get(hash(inviteMatch[1])) as
-          { room_id: string; expires_at: number } | undefined;
-        check(i, "邀请不存在或已失效", 404);
-        const r = room(i.room_id);
-        check(r, "邀请不存在", 404);
-        const state = readState(r);
-        const host = profile(user(r.owner_id)!);
-        const status: Invitation["status"] =
-          state.couple?.status === "unbound"
-            ? "unavailable"
-            : r.owner_id === u.id
-              ? "mine"
-              : r.partner_id === u.id
-                ? "joined"
-                : i.expires_at < Date.now()
-                  ? "expired"
-                  : r.partner_id
-                    ? "unavailable"
-                    : "available";
-        json(res, {
-          petName: state.pet!.name,
-          city: state.couple!.city,
-          inviter: { name: host.name, avatar: host.avatar },
-          expiresAt: new Date(i.expires_at).toISOString(),
-          status,
-        });
-        return;
-      }
-      const data = await body(req);
-      db.exec("BEGIN IMMEDIATE");
-      try {
-        const current = user(u.id)!;
-        if (req.method === "PATCH" && url.pathname === "/api/profile") {
-          const p = profile(current);
-          check(
-            typeof data.name === "string" &&
-              data.name.trim().length >= 1 &&
-              data.name.trim().length <= 20,
-            "昵称需要1–20个字",
-          );
-          check(avatars.includes(data.avatar), "请选择可用头像");
-          check(
-            typeof data.city === "string" && data.city.trim().length <= 30,
-            "城市最多30个字",
-          );
-          check(
-            typeof data.bio === "string" && data.bio.trim().length <= 120,
-            "个人简介最多120个字",
-          );
-          const updated = {
-            ...p,
-            name: data.name.trim(),
-            avatar: data.avatar,
-            city: data.city.trim(),
-            bio: data.bio.trim(),
-          };
-          db.prepare("UPDATE users SET profile=? WHERE id=?").run(
-            JSON.stringify(updated),
-            u.id,
-          );
-          const r = getRoom(current);
-          if (r) {
-            const s = readState(r);
-            s.users = s.users.map((person) =>
-              person.id === u.id
-                ? { ...person, name: updated.name, avatar: updated.avatar }
-                : person,
-            );
-            s.revision++;
-            putRoom(r, s);
-          }
-          db.exec("COMMIT");
-          json(res, view(user(u.id)!));
+      const data = req.method === "GET" ? {} : await body(req);
+      let response: { value: unknown; status: number } | null = null;
+      const send = (_res: ServerResponse, value: unknown, status = 200) => {
+        response = { value, status };
+      };
+      await storage.transaction(async () => {
+        const u = await session(req, res);
+        let limiter = rate.get(u.id);
+        if (!limiter || Date.now() - limiter.start > 60000) {
+          limiter = { count: 0, start: Date.now() };
+          rate.set(u.id, limiter);
+        }
+        check(++limiter.count <= 180, "操作过于频繁，请稍后重试", 429);
+        if (rate.size > 5000) {
+          for (const [key, v] of rate)
+            if (Date.now() - v.start > 60000) rate.delete(key);
+        }
+        if (req.method === "GET" && url.pathname === "/api/session") {
+          send(res, await view(u));
           return;
         }
-        if (req.method === "POST" && url.pathname === "/api/rooms") {
-          check(!current.room_id, "你已经在一个房间里了", 409);
-          check(profile(current).name !== "新朋友", "请先设置个人昵称");
-          let s = reduceCommand(initialState(), "A", {
-            id: uid(),
-            type: "adopt",
-            payload: data,
+        const inviteMatch = url.pathname.match(
+          /^\/api\/invites\/([a-zA-Z0-9-]+)(\/accept)?$/,
+        );
+        if (req.method === "GET" && inviteMatch) {
+          const i = (await storage.get(
+            "SELECT room_id,expires_at FROM invites WHERE token_hash=?",
+            hash(inviteMatch[1]),
+          )) as { room_id: string; expires_at: number } | undefined;
+          check(i, "邀请不存在或已失效", 404);
+          const r = await room(i.room_id);
+          check(r, "邀请不存在", 404);
+          const state = await readState(r);
+          const host = profile((await user(r.owner_id))!);
+          const status: Invitation["status"] =
+            state.couple?.status === "unbound"
+              ? "unavailable"
+              : r.owner_id === u.id
+                ? "mine"
+                : r.partner_id === u.id
+                  ? "joined"
+                  : i.expires_at < Date.now()
+                    ? "expired"
+                    : r.partner_id
+                      ? "unavailable"
+                      : "available";
+          send(res, {
+            petName: state.pet!.name,
+            city: state.couple!.city,
+            inviter: { name: host.name, avatar: host.avatar },
+            expiresAt: new Date(i.expires_at).toISOString(),
+            status,
           });
-          s.users = [
-            {
+          return;
+        }
+
+        {
+          const current = (await user(u.id))!;
+          if (req.method === "PATCH" && url.pathname === "/api/profile") {
+            const p = profile(current);
+            check(
+              typeof data.name === "string" &&
+                data.name.trim().length >= 1 &&
+                data.name.trim().length <= 20,
+              "昵称需要1–20个字",
+            );
+            check(avatars.includes(data.avatar), "请选择可用头像");
+            check(
+              typeof data.city === "string" && data.city.trim().length <= 30,
+              "城市最多30个字",
+            );
+            check(
+              typeof data.bio === "string" && data.bio.trim().length <= 120,
+              "个人简介最多120个字",
+            );
+            const updated = {
+              ...p,
+              name: data.name.trim(),
+              avatar: data.avatar,
+              city: data.city.trim(),
+              bio: data.bio.trim(),
+            };
+            await storage.run(
+              "UPDATE users SET profile=? WHERE id=?",
+              JSON.stringify(updated),
+              u.id,
+            );
+            const r = await getRoom(current);
+            if (r) {
+              const s = await readState(r);
+              s.users = s.users.map((person) =>
+                person.id === u.id
+                  ? { ...person, name: updated.name, avatar: updated.avatar }
+                  : person,
+              );
+              s.revision++;
+              await putRoom(r, s);
+            }
+            send(res, await view((await user(u.id))!));
+            return;
+          }
+          if (req.method === "POST" && url.pathname === "/api/rooms") {
+            check(!current.room_id, "你已经在一个房间里了", 409);
+            check(profile(current).name !== "新朋友", "请先设置个人昵称");
+            let s = reduceCommand(initialState(), "A", {
+              id: uid(),
+              type: "adopt",
+              payload: data,
+            });
+            s.users = [
+              {
+                id: u.id,
+                role: "A",
+                name: profile(current).name,
+                avatar: profile(current).avatar,
+                createdAt: profile(current).createdAt,
+              },
+              {
+                id: "pending",
+                role: "B",
+                name: "等待另一位加入",
+                createdAt: new Date().toISOString(),
+              },
+            ];
+            const id = uid();
+            s.couple!.id = id;
+            await storage.run(
+              "INSERT INTO rooms VALUES (?,?,NULL,?)",
+              id,
+              u.id,
+              JSON.stringify(s),
+            );
+            await storage.run(
+              "UPDATE users SET room_id=? WHERE id=?",
+              id,
+              u.id,
+            );
+            await storage.run(
+              "INSERT INTO invites VALUES (?,?,?)",
+              hash(s.couple!.inviteToken),
+              id,
+              Date.parse(s.couple!.expiresAt),
+            );
+            send(res, await view((await user(u.id))!), 201);
+            return;
+          }
+          if (req.method === "POST" && inviteMatch?.[2]) {
+            const i = (await storage.get(
+              "SELECT room_id,expires_at FROM invites WHERE token_hash=?",
+              hash(inviteMatch[1]),
+            )) as { room_id: string; expires_at: number } | undefined;
+            check(i, "邀请不存在", 404);
+            const r = await room(i.room_id);
+            check(r, "房间不存在", 404);
+            check(r.owner_id !== u.id, "不能接受自己的邀请");
+            if (r.partner_id === u.id) {
+              send(res, await view(current));
+              return;
+            }
+            check(!current.room_id, "请先退出当前房间，再接受新的邀请", 409);
+            check(profile(current).name !== "新朋友", "请先设置个人昵称");
+            check(i.expires_at > Date.now(), "邀请已过期，请对方重新生成", 410);
+            check(!r.partner_id, "该邀请已被其他人接受", 409);
+            let s = await readState(r);
+            s = reduceCommand(s, "B", {
+              id: uid(),
+              type: "accept",
+              payload: { token: inviteMatch[1] },
+            });
+            s.users[1] = {
               id: u.id,
-              role: "A",
+              role: "B",
               name: profile(current).name,
               avatar: profile(current).avatar,
               createdAt: profile(current).createdAt,
-            },
-            {
-              id: "pending",
-              role: "B",
-              name: "等待另一位加入",
-              createdAt: new Date().toISOString(),
-            },
-          ];
-          const id = uid();
-          s.couple!.id = id;
-          db.prepare("INSERT INTO rooms VALUES (?,?,NULL,?)").run(
-            id,
-            u.id,
-            JSON.stringify(s),
-          );
-          db.prepare("UPDATE users SET room_id=? WHERE id=?").run(id, u.id);
-          db.prepare("INSERT INTO invites VALUES (?,?,?)").run(
-            hash(s.couple!.inviteToken),
-            id,
-            Date.parse(s.couple!.expiresAt),
-          );
-          db.exec("COMMIT");
-          json(res, view(user(u.id)!), 201);
-          return;
-        }
-        if (req.method === "POST" && inviteMatch?.[2]) {
-          const i = db
-            .prepare(
-              "SELECT room_id,expires_at FROM invites WHERE token_hash=?",
-            )
-            .get(hash(inviteMatch[1])) as
-            { room_id: string; expires_at: number } | undefined;
-          check(i, "邀请不存在", 404);
-          const r = room(i.room_id);
-          check(r, "房间不存在", 404);
-          check(r.owner_id !== u.id, "不能接受自己的邀请");
-          if (r.partner_id === u.id) {
-            db.exec("COMMIT");
-            json(res, view(current));
+            };
+            s = reduceCommand(s, "A", { id: uid(), type: "bind" });
+            r.partner_id = u.id;
+            await putRoom(r, s);
+            await storage.run(
+              "UPDATE users SET room_id=? WHERE id=?",
+              r.id,
+              u.id,
+            );
+            send(res, await view((await user(u.id))!));
             return;
           }
-          check(!current.room_id, "请先退出当前房间，再接受新的邀请", 409);
-          check(profile(current).name !== "新朋友", "请先设置个人昵称");
-          check(i.expires_at > Date.now(), "邀请已过期，请对方重新生成", 410);
-          check(!r.partner_id, "该邀请已被其他人接受", 409);
-          let s = readState(r);
-          s = reduceCommand(s, "B", {
-            id: uid(),
-            type: "accept",
-            payload: { token: inviteMatch[1] },
-          });
-          s.users[1] = {
-            id: u.id,
-            role: "B",
-            name: profile(current).name,
-            avatar: profile(current).avatar,
-            createdAt: profile(current).createdAt,
-          };
-          s = reduceCommand(s, "A", { id: uid(), type: "bind" });
-          r.partner_id = u.id;
-          putRoom(r, s);
-          db.prepare("UPDATE users SET room_id=? WHERE id=?").run(r.id, u.id);
-          db.exec("COMMIT");
-          json(res, view(user(u.id)!));
-          return;
-        }
-        if (req.method === "POST" && url.pathname === "/api/rooms/invite") {
-          const r = getRoom(current);
-          check(r && r.owner_id === u.id, "只有房主可以生成邀请", 403);
-          let s = readState(r);
-          s = reduceCommand(s, "A", { id: uid(), type: "invite_create" });
-          db.prepare("DELETE FROM invites WHERE room_id=?").run(r.id);
-          db.prepare("INSERT INTO invites VALUES (?,?,?)").run(
-            hash(s.couple!.inviteToken),
-            r.id,
-            Date.parse(s.couple!.expiresAt),
-          );
-          putRoom(r, s);
-          db.exec("COMMIT");
-          json(res, view(current));
-          return;
-        }
-        if (req.method === "POST" && url.pathname === "/api/commands") {
-          const r = getRoom(current);
-          check(r, "请先创建或加入房间", 403);
-          const actor = roleOf(current, r);
-          check(
-            typeof data.id === "string" &&
-              data.id.length <= 80 &&
-              typeof data.type === "string",
-            "无效操作",
-          );
-          check(
-            ![
-              "adopt",
-              "accept",
-              "bind",
-              "invite_create",
-              "invite_open",
-            ].includes(data.type),
-            "请使用房间邀请流程",
-            403,
-          );
-          if (["day", "reward_review", "ad"].includes(data.type))
-            check(options.demo !== false, "正式模式不开放此演示操作", 403);
-          if (data.type === "day")
-            check(r.owner_id === u.id, "只有房主能调整演示日期", 403);
-          let s = readState(r);
-          s = reduceCommand(s, actor, data as Command);
-          putRoom(r, s);
-          if (data.type === "unbind")
-            db.prepare("UPDATE users SET room_id=NULL WHERE room_id=?").run(
+          if (req.method === "POST" && url.pathname === "/api/rooms/invite") {
+            const r = await getRoom(current);
+            check(r && r.owner_id === u.id, "只有房主可以生成邀请", 403);
+            let s = await readState(r);
+            s = reduceCommand(s, "A", { id: uid(), type: "invite_create" });
+            await storage.run("DELETE FROM invites WHERE room_id=?", r.id);
+            await storage.run(
+              "INSERT INTO invites VALUES (?,?,?)",
+              hash(s.couple!.inviteToken),
               r.id,
+              Date.parse(s.couple!.expiresAt),
             );
-          db.exec("COMMIT");
-          json(res, view(user(u.id)!));
-          return;
+            await putRoom(r, s);
+            send(res, await view(current));
+            return;
+          }
+          if (req.method === "POST" && url.pathname === "/api/commands") {
+            const r = await getRoom(current);
+            check(r, "请先创建或加入房间", 403);
+            const actor = roleOf(current, r);
+            check(
+              typeof data.id === "string" &&
+                data.id.length <= 80 &&
+                typeof data.type === "string",
+              "无效操作",
+            );
+            check(
+              ![
+                "adopt",
+                "accept",
+                "bind",
+                "invite_create",
+                "invite_open",
+              ].includes(data.type),
+              "请使用房间邀请流程",
+              403,
+            );
+            if (["day", "reward_review", "ad"].includes(data.type))
+              check(options.demo !== false, "正式模式不开放此演示操作", 403);
+            if (data.type === "day")
+              check(r.owner_id === u.id, "只有房主能调整演示日期", 403);
+            let s = await readState(r);
+            s = reduceCommand(s, actor, data as Command);
+            await putRoom(r, s);
+            if (data.type === "unbind")
+              await storage.run(
+                "UPDATE users SET room_id=NULL WHERE room_id=?",
+                r.id,
+              );
+            send(res, await view((await user(u.id))!));
+            return;
+          }
+          throw new HttpError(404, "接口不存在");
         }
-        throw new HttpError(404, "接口不存在");
-      } catch (e) {
-        db.exec("ROLLBACK");
-        throw e;
+      });
+      if (response) {
+        const result = response as { value: unknown; status: number };
+        json(res, result.value, result.status);
       }
     } catch (e) {
+      const databaseFailure =
+        typeof (e as { code?: unknown })?.code === "string";
       json(
         res,
-        { error: (e as Error).message || "服务暂时不可用" },
-        e instanceof HttpError ? e.status : 400,
+        {
+          error: databaseFailure
+            ? "数据库暂时不可用，请稍后重试"
+            : (e as Error).message || "服务暂时不可用",
+        },
+        e instanceof HttpError ? e.status : databaseFailure ? 503 : 400,
       );
     }
   });
   return {
     server,
-    db,
-    close: () => {
-      server.close();
-      db.close();
+    storage,
+    close: async () => {
+      await new Promise<void>((r) => server.close(() => r()));
+      await storage.close();
     },
   };
 }

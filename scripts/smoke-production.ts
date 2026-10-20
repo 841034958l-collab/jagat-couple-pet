@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../server/app";
-const app = createApp({
+const app = await createApp({
   dbPath: ":memory:",
   staticDir: resolve("dist"),
   secureCookie: true,
@@ -28,5 +28,5 @@ try {
   console.log("Production static HTML/JS + API + secure-cookie smoke: passed");
 } finally {
   await new Promise<void>((r) => app.server.close(() => r()));
-  app.db.close();
+  await app.storage.close();
 }
