@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "server/**/*.ts",
+    "src/domain/**/*.ts",
+    "src/services/session-types.ts"
+  ],
+  "exclude": ["**/*.test.ts"]
+}

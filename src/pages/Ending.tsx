@@ -11,7 +11,7 @@ import {
   outcomeTitle,
 } from "../domain/engine";
 export function Ending({ go }: { go: (p: string) => void }) {
-  const { state: s, role, run, busy } = useGame();
+  const { state: s, role, me, run, busy } = useGame();
   const [choice, setChoice] = useState<"keep" | "jagat" | null>(null);
   const p = s.pet;
   const outcome = s.outcomes.find((o) => o.round === s.voteRound);
@@ -94,17 +94,20 @@ export function Ending({ go }: { go: (p: string) => void }) {
           <span className="kicker">
             TWO SECRET CHOICES · ROUND {s.voteRound}
           </span>
-          <h2>玩家 {role}，这一刻听听自己的心。</h2>
+          <h2>{me.name}，这一刻听听自己的心。</h2>
           <p className="description">
             双方看到相同选项。提交后锁定，本轮双方完成前不会返回或展示对方的答案。
           </p>
           <div className="vote-status">
-            <span>A {s.votes.A ? "🔒 已提交" : "○ 等待选择"}</span>
-            <span>B {s.votes.B ? "🔒 已提交" : "○ 等待选择"}</span>
+            <span>我 {s.votes[role] ? "🔒 已提交" : "○ 等待选择"}</span>
+            <span>
+              对方{" "}
+              {s.votes[role === "A" ? "B" : "A"] ? "🔒 已提交" : "○ 等待选择"}
+            </span>
           </div>
           {s.votes[role] ? (
             <div className="sealed-letter">
-              你的答案已封存。请切换到另一位玩家完成选择。
+              你的答案已封存，等待对方在自己的设备上完成选择。
               <br />
               这里不会回显你的答案，也不会提前显示对方答案。
             </div>
@@ -142,7 +145,7 @@ export function Ending({ go }: { go: (p: string) => void }) {
           )}
           <p className="notice">
             Demo
-            仅模拟私密流程，本机存储可被设备使用者读取；正式投票必须由已验证身份的服务端保存并揭晓。
+            选票保存在共享服务端，仅在双方提交后揭晓。请等待对方用自己的设备完成选择。
           </p>
         </Card>
       ) : (

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useGame } from "../store";
 import { Pet } from "../components/Pet";
 import { Card, Heading } from "../components/UI";
@@ -10,6 +10,10 @@ export function House() {
   const [slot, setSlot] = useState<keyof PetHouse["slots"]>("bed");
   const [placing, setPlacing] = useState(false);
   const scene = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setWall(s.house.wallpaper);
+    setFloor(s.house.floor);
+  }, [s.house.wallpaper, s.house.floor]);
   const colors: Record<string, string> = {
     cream: "#fff0df",
     pink: "#f6e1e8",
@@ -184,8 +188,8 @@ export function House() {
             {placing ? "取消摆放" : "移动选中家具：再点击小屋中的位置"}
           </button>
           <p className="description">
-            保存对本机 A / B
-            共同可见，刷新后保留。购买家具仅用于外观，不会直接提升品质。
+            保存后对房间内双方
+            共同可见，另一台设备会自动同步。购买家具仅用于外观，不会直接提升品质。
           </p>
         </Card>
       </div>

@@ -5,7 +5,7 @@ import { calendar, streak } from "../domain/engine";
 import { milestones, story, dimensionNames } from "../domain/config";
 import type { Quality } from "../domain/models";
 export function Calendar() {
-  const { state: s, run } = useGame();
+  const { state: s, role, run } = useGame();
   const [month, setMonth] = useState(Math.floor((s.demoDay - 1) / 30));
   const [selected, setSelected] = useState(s.demoDay);
   useEffect(() => {
@@ -84,7 +84,11 @@ export function Calendar() {
                           ? "◐"
                           : "·"}
                 </span>
-                <small>{d.roles.join(" · ") || "未记录"}</small>
+                <small>
+                  {d.roles
+                    .map((r) => (r === role ? "我" : "对方"))
+                    .join(" · ") || "未记录"}
+                </small>
               </button>
             ))}
           </div>
@@ -102,8 +106,10 @@ export function Calendar() {
               `团子的第${selected}天`}
           </h2>
           <p className="description">
-            A {current.roles.includes("A") ? "已参与" : "未记录"} · B{" "}
-            {current.roles.includes("B") ? "已参与" : "未记录"}
+            我 {current.roles.includes(role) ? "已参与" : "未记录"} · 对方{" "}
+            {current.roles.includes(role === "A" ? "B" : "A")
+              ? "已参与"
+              : "未记录"}
             <br />
             XP +{current.xp} · 活力 +{current.vitality} · 模拟估值变化{" "}
             {money(current.valuationChange)}
@@ -129,7 +135,7 @@ export function Calendar() {
             .filter((n) => n.day === selected)
             .map((n) => (
               <p className="subtle" key={n.id}>
-                {n.role} ·{" "}
+                {n.role === role ? "我" : "对方"} ·{" "}
                 {n.food === "basic"
                   ? "免费基础粮"
                   : n.food === "food"
@@ -145,7 +151,7 @@ export function Calendar() {
                   <span>●</span>
                   <div>
                     <b>
-                      {e.role} · {e.label}
+                      {e.role === role ? "我" : "对方"} · {e.label}
                     </b>
                     <p>
                       +{e.xp} XP · Lv.{e.levelBefore} → {e.levelAfter} · 活力 +

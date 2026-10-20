@@ -6,7 +6,7 @@ import { Heading, Card, Modal } from "../components/UI";
 import { MapArt } from "../components/MapArt";
 import { Pet } from "../components/Pet";
 export function Map({ go }: { go: (p: string) => void }) {
-  const { state: s, role, setRole, run, busy, notify } = useGame();
+  const { state: s, role, me, run, busy, notify } = useGame();
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [success, setSuccess] = useState(false);
@@ -164,21 +164,11 @@ export function Map({ go }: { go: (p: string) => void }) {
           <p className="description">
             各看一份专属线索，双方查看后再点击地点寻找。每天成功一次，+20 XP。
           </p>
-          <div className="role-tabs">
-            {(["A", "B"] as const).map((r) => (
-              <button
-                className={r === role ? "selected" : ""}
-                key={r}
-                onClick={() => setRole(r)}
-              >
-                {r === "A" ? "👩🏻" : "👦🏻"} 玩家 {r}
-              </button>
-            ))}
-          </div>
+          <p className="pill">{me.avatar} 这是你的专属线索，需要和对方交流</p>
           {adventure ? (
             <>
               <div className="clue">
-                <span>✉ {role} 的专属线索</span>
+                <span>✉ 我的专属线索</span>
                 {s.adventure?.clue ? (
                   <p>{s.adventure.clue}</p>
                 ) : (
@@ -192,8 +182,11 @@ export function Map({ go }: { go: (p: string) => void }) {
                 )}
               </div>
               <p className="description">
-                A {s.adventure?.seen.includes("A") ? "✓ 已查看" : "○ 未查看"} ·
-                B {s.adventure?.seen.includes("B") ? "✓ 已查看" : "○ 未查看"}
+                我 {s.adventure?.seen.includes(role) ? "✓ 已查看" : "○ 未查看"}{" "}
+                · 对方{" "}
+                {s.adventure?.seen.includes(role === "A" ? "B" : "A")
+                  ? "✓ 已查看"
+                  : "○ 未查看"}
                 <br />
                 已经找过 {s.adventure?.attempts} 次，找错也没关系。
               </p>
@@ -209,7 +202,7 @@ export function Map({ go }: { go: (p: string) => void }) {
                 void run(
                   "adventure_start",
                   {},
-                  "团子出门啦，请轮流打开 A / B 线索",
+                  "团子出门啦，请和对方分别查看线索",
                 )
               }
             >

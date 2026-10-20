@@ -10,7 +10,7 @@ const options = {
   密码: ["心动", "陪伴", "星光", "回家"],
 };
 export function Interact() {
-  const { state: s, role, run, busy } = useGame();
+  const { state: s, role, me, run, busy } = useGame();
   const [tab, setTab] = useState("letters");
   const [body, setBody] = useState("今天辛苦了，想陪你一起慢慢休息。");
   const [reply, setReply] = useState("收到一个抱抱 ♡");
@@ -58,7 +58,7 @@ export function Interact() {
       {tab === "letters" && (
         <div className="two-col">
           <Card>
-            <span className="kicker">FROM {role}, WITH LOVE</span>
+            <span className="kicker">FROM {me.name}, WITH LOVE</span>
             <h2>宠物替我说一句</h2>
             <div className="template-choices">
               {[
@@ -87,16 +87,16 @@ export function Interact() {
                   await run(
                     "letter_send",
                     { body },
-                    "团子出发送信啦！切换另一位玩家回复",
+                    "团子出发送信啦，等待对方在自己的设备上回复",
                   )
                 )
                   setBody("");
               }}
             >
-              让团子送给 {role === "A" ? "B" : "A"}
+              让团子送给对方
             </button>
             <p className="subtle">
-              不记录信件正文到通用埋点。此为本地存档，请勿填写敏感信息。
+              不将信件正文写入通用埋点，内容仅在双方的房间内可见。
             </p>
           </Card>
           <Card>
@@ -109,7 +109,7 @@ export function Interact() {
             {s.letters.map((l) => (
               <div className="letter-card" key={l.id}>
                 <span className="kicker">
-                  {l.sender} → {l.sender === "A" ? "B" : "A"}
+                  {l.sender === role ? "我 → 对方" : "对方 → 我"}
                 </span>
                 <p>{l.body}</p>
                 {l.reply ? (
@@ -158,7 +158,9 @@ export function Interact() {
         <div className="two-col">
           <Card>
             <h2>今天，你需要什么？</h2>
-            <p className="description">每位玩家分别选择，不评判谁更爱谁。</p>
+            <p className="description">
+              各自在自己的设备上选择，不评判谁更爱谁。
+            </p>
             <div className="choice-list">
               {[
                 "想被安慰",
@@ -180,9 +182,9 @@ export function Interact() {
             </div>
             {s.needs.A && s.needs.B ? (
               <blockquote>
-                A：{s.needs.A}
+                {s.users.find((u) => u.role === "A")?.name}：{s.needs.A}
                 <br />
-                B：{s.needs.B}
+                {s.users.find((u) => u.role === "B")?.name}：{s.needs.B}
                 <br />
                 团子建议：
                 {s.needs.A === "想安静休息" || s.needs.B === "想安静休息"
@@ -192,7 +194,7 @@ export function Interact() {
             ) : (
               <p className="description">
                 {s.needs[role]
-                  ? "已记录，切换另一位完成选择。"
+                  ? "已记录，等待对方在自己的设备上选择。"
                   : "选一个今天最贴近的需要吧。"}
               </p>
             )}
@@ -203,7 +205,7 @@ export function Interact() {
               只用于吃什么、看什么、穿什么等轻量选择。
             </p>
             <label>
-              玩家 {role} 的提议
+              我的提议
               <select
                 value={mediation}
                 onChange={(e) => setMediation(e.target.value)}
@@ -281,7 +283,7 @@ export function Interact() {
                     你已提交。
                     {c.otherSubmitted
                       ? "双方已完成"
-                      : "切换另一位继续，答案尚未揭晓。"}
+                      : "等待对方在自己的设备上提交，答案尚未揭晓。"}
                   </p>
                 ) : (
                   <>
@@ -325,7 +327,7 @@ export function Interact() {
                         }
                       }}
                     >
-                      提交玩家 {role} 的答案
+                      提交我的答案
                     </button>
                   </>
                 )}
@@ -342,9 +344,11 @@ export function Interact() {
             {c?.result ? (
               <>
                 <p className="description">
-                  A：{c.result.answers.A}
+                  {s.users.find((u) => u.role === "A")?.name}：
+                  {c.result.answers.A}
                   <br />
-                  B：{c.result.answers.B}
+                  {s.users.find((u) => u.role === "B")?.name}：
+                  {c.result.answers.B}
                 </p>
                 <blockquote>
                   {c.result.matches === 2
@@ -359,7 +363,7 @@ export function Interact() {
               <p className="description">
                 不会提前展示另一位的答案。
                 <br />
-                请在顶部切换 A / B，轮流完成提交。
+                请与对方各自在自己的设备上完成提交。
               </p>
             )}
           </Card>
@@ -378,8 +382,10 @@ export function Interact() {
             {s.dateMission?.status === "active" ? (
               <>
                 <p className="pill">
-                  A {s.dateMission.completed.includes("A") ? "✓" : "○"} · B{" "}
-                  {s.dateMission.completed.includes("B") ? "✓" : "○"}
+                  我 {s.dateMission.completed.includes(role) ? "✓" : "○"} · 对方{" "}
+                  {s.dateMission.completed.includes(role === "A" ? "B" : "A")
+                    ? "✓"
+                    : "○"}
                 </p>
                 <button
                   className="primary full"
@@ -392,7 +398,7 @@ export function Interact() {
                     )
                   }
                 >
-                  玩家 {role} 确认约会完成
+                  我确认约会完成
                 </button>
               </>
             ) : (
@@ -479,7 +485,8 @@ export function Interact() {
               s.futureLetters.map((l) => (
                 <div className="letter-card" key={l.id}>
                   <span className="pill">
-                    D{l.unlockDay} · {l.sender} → {l.recipient}
+                    D{l.unlockDay} ·{" "}
+                    {l.sender === role ? "我 → 对方" : "对方 → 我"}
                   </span>
                   {l.body ? (
                     <p>{l.body}</p>

@@ -11,6 +11,7 @@ export type PosterData = {
   color: string;
   summary: string;
   couple: boolean;
+  coupleNames?: string;
 };
 function wrap(
   ctx: CanvasRenderingContext2D,
@@ -99,7 +100,11 @@ export async function createPoster(d: PosterData): Promise<Blob> {
   if (d.format !== "wechat") {
     y += 48;
     ctx.font = "22px sans-serif";
-    ctx.fillText(d.city + (d.couple ? " · 玩家 A ♡ 玩家 B" : ""), 450, y);
+    ctx.fillText(
+      d.city + (d.couple ? ` · ${d.coupleNames || "共同养宠的我们"}` : ""),
+      450,
+      y,
+    );
   }
   ctx.font = "25px sans-serif";
   y = wrap(ctx, d.summary, 450, y + 60, 720, 40);

@@ -54,6 +54,9 @@ export function Share() {
         color: personality(s).color,
         summary,
         couple: showCouple,
+        coupleNames: showCouple
+          ? s.users.map((u) => u.name).join(" ♡ ")
+          : undefined,
       });
       const result = await run("share", {
         kind,
@@ -148,15 +151,17 @@ export function Share() {
                   checked={showCouple}
                   onChange={(e) => setShowCouple(e.target.checked)}
                 />
-                公开双方角色信息（A / B）
+                公开双方昵称
               </label>
             </div>
             {kind === "99天秘密结局" && (
               <div className="consent-box">
                 <p>
-                  结局海报需双方主动同意：A{" "}
-                  {s.shareConsent.includes("A") ? "✓" : "○"} · B{" "}
-                  {s.shareConsent.includes("B") ? "✓" : "○"}
+                  结局海报需双方主动同意：我{" "}
+                  {s.shareConsent.includes(role) ? "✓" : "○"} · 对方{" "}
+                  {s.shareConsent.includes(role === "A" ? "B" : "A")
+                    ? "✓"
+                    : "○"}
                 </p>
                 <button
                   className="secondary full"
@@ -165,7 +170,7 @@ export function Share() {
                     void run("consent", {}, "已记录你的结局分享同意")
                   }
                 >
-                  玩家 {role} 同意公开本轮结局
+                  我同意公开本轮结局
                 </button>
               </div>
             )}
@@ -197,7 +202,7 @@ export function Share() {
             </p>
             <p>
               {hideLocation ? "地点已隐藏" : s.couple?.city}
-              {showCouple ? " · 玩家 A ♡ 玩家 B" : ""}
+              {showCouple ? ` · ${s.users.map((u) => u.name).join(" ♡ ")}` : ""}
             </p>
             <blockquote>{summary}</blockquote>
             <Notice />

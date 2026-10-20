@@ -3,7 +3,7 @@ export type Timestamp = string;
 export type Role = "A" | "B";
 export type Status = "pending" | "active" | "completed" | "cancelled";
 export type Base = { id: ID; createdAt: Timestamp };
-export type User = Base & { role: Role; name: string };
+export type User = Base & { role: Role; name: string; avatar?: string };
 export type Couple = Base & {
   status: "inviting" | "confirming" | "bound" | "unbound";
   city: string;

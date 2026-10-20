@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: jagat-couple-pet
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /var/data/jagat.sqlite
+      - key: DEMO_MODE
+        value: "true"
+    disk:
+      name: jagat-data
+      mountPath: /var/data
+      sizeGB: 1

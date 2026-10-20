@@ -28,6 +28,7 @@ import { Share } from "./pages/Share";
 import { Story } from "./pages/Story";
 import { Ending } from "./pages/Ending";
 import { Demo } from "./pages/Demo";
+import { Profile } from "./pages/Profile";
 import { Celebration } from "./components/Celebration";
 import "./v3.css";
 const nav = [
@@ -41,11 +42,12 @@ const nav = [
   ["story", "99天故事", BookOpen],
   ["share", "分享纪念", Sparkles],
   ["couple", "双人房间", Users],
-  ["demo", "Demo 面板", Settings2],
+  ["profile", "我的资料", Users],
+  ["demo", "更多功能", Settings2],
 ] as const;
 function App() {
   const [page, setPage] = useState(location.hash.slice(1) || "home");
-  const { state: s, role, setRole } = useGame();
+  const { state: s, role, me } = useGame();
   function go(p: string) {
     location.hash = p;
     setPage(p);
@@ -56,7 +58,7 @@ function App() {
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
   }, []);
-  const allowed = ["home", "couple", "demo", "story", "share"];
+  const allowed = ["home", "couple", "demo", "story", "share", "profile"];
   const locked = s.couple?.status !== "bound" && !allowed.includes(page);
   return (
     <div className="app">
@@ -95,17 +97,14 @@ function App() {
           </div>
           <div className="header-right">
             <span className="demo-label">DEMO · 无真实支付</span>
-            <div className="role-switch" aria-label="切换玩家">
-              {(["A", "B"] as const).map((r) => (
-                <button
-                  className={role === r ? "active" : ""}
-                  onClick={() => setRole(r)}
-                  key={r}
-                >
-                  {r === "A" ? "👩🏻" : "👦🏻"} <b>{r}</b>
-                </button>
-              ))}
-            </div>
+            <button
+              className="my-profile-chip"
+              onClick={() => go("profile")}
+              aria-label="我的个人资料"
+            >
+              <span>{me.avatar}</span>
+              <b>{me.name}</b>
+            </button>
           </div>
         </header>
         <div className="content">
@@ -113,7 +112,7 @@ function App() {
             <Empty
               icon="💌"
               title="先一起领养，再开始冒险"
-              text="由 A 创建房间，切换 B 接受，再切换 A 确认。"
+              text="一人创建房间并邀请，对方用自己的设备接受后开始共同养宠。"
             >
               <button
                 className="primary"
@@ -124,6 +123,8 @@ function App() {
             </Empty>
           ) : page === "home" ? (
             <Home go={go} />
+          ) : page === "profile" ? (
+            <Profile go={go} />
           ) : page === "couple" ? (
             <Couple go={go} />
           ) : page === "valuation" ? (
@@ -157,14 +158,14 @@ function App() {
           )}
           <footer className="page-footer">
             <span>jagat ♡ 把陪伴，变成小小冒险。</span>
-            <span>LOCAL DEMO · NOT A CASH OFFER</span>
+            <span>SHARED PET · NO REAL PAYMENTS</span>
           </footer>
         </div>
       </main>
       <nav className="mobile-nav">
         {nav
           .filter((n) =>
-            ["home", "map", "interact", "shop", "demo"].includes(n[0]),
+            ["home", "map", "interact", "shop", "profile"].includes(n[0]),
           )
           .map(([id, label, I]) => (
             <button
@@ -173,7 +174,7 @@ function App() {
               onClick={() => go(id)}
             >
               <I size={21} />
-              <span>{id === "demo" ? "更多" : label.slice(0, 2)}</span>
+              <span>{id === "profile" ? "我" : label.slice(0, 2)}</span>
             </button>
           ))}
       </nav>

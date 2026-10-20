@@ -4,3 +4,8 @@ dist/
 .playwright/
 playwright-report/
 test-results/
+
+.data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

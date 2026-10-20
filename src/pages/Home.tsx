@@ -23,7 +23,7 @@ import {
 } from "../domain/engine";
 import { personalities, story, xpThresholds } from "../domain/config";
 export function Home({ go }: { go: (p: string) => void }) {
-  const { state: s, role, run, busy, notify } = useGame();
+  const { state: s, me, run, busy, notify } = useGame();
   const [adopt, setAdopt] = useState(false);
   const [name, setName] = useState("团子");
   const [city, setCity] = useState("心动小镇");
@@ -67,7 +67,7 @@ export function Home({ go }: { go: (p: string) => void }) {
                 ? s.couple.status === "unbound"
                   ? "这段旅程已暂停"
                   : s.couple.status === "confirming"
-                    ? "B 已接受邀请，等待 A 确认"
+                    ? "正在成立你们的房间"
                     : "邀请另一位铲屎官加入"
                 : "我们的99天，从共同领养开始"}
             </b>
@@ -75,7 +75,13 @@ export function Home({ go }: { go: (p: string) => void }) {
           </div>
           <button
             className="secondary"
-            onClick={() => (s.couple ? go("couple") : setAdopt(true))}
+            onClick={() =>
+              s.couple
+                ? go("couple")
+                : me.name === "新朋友"
+                  ? go("profile")
+                  : setAdopt(true)
+            }
           >
             {s.couple ? "前往双人房间" : "开始领养"} <ArrowUpRight size={16} />
           </button>
@@ -314,15 +320,11 @@ export function Home({ go }: { go: (p: string) => void }) {
             className="primary full"
             disabled={busy || !name.trim()}
             onClick={async () => {
-              if (role !== "A") {
-                notify("请先在顶部切换为 A 创建房间");
-                return;
-              }
               if (
                 await run(
                   "adopt",
                   { name, city, color },
-                  "房间创建成功，邀请 B 一起领养吧",
+                  "房间创建成功，把邀请发给另一位吧",
                 )
               ) {
                 setAdopt(false);

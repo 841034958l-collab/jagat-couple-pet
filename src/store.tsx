@@ -7,98 +7,116 @@ import {
   type ReactNode,
 } from "react";
 import type { PublicState, Role } from "./domain/models";
-import { MockGameAPI, STORAGE_KEY } from "./services/mock";
+import type {
+  Profile,
+  SessionSnapshot,
+  Invitation,
+} from "./services/session-types";
+import { sharedAPI, initializeSession } from "./services/shared";
 import { uid } from "./domain/engine";
-import type { GameAPI } from "./services/adapters";
 type Context = {
   state: PublicState;
   role: Role;
-  setRole: (r: Role) => void;
+  me: Profile;
+  owner: boolean;
+  demo: boolean;
+  roomId: string | null;
+  busy: boolean;
+  online: boolean;
+  notify: (s: string) => void;
+  refresh: () => Promise<void>;
   run: (
     type: string,
     payload?: Record<string, unknown>,
     message?: string,
   ) => Promise<PublicState | null>;
-  busy: boolean;
-  notify: (s: string) => void;
+  saveProfile: (
+    p: Pick<Profile, "name" | "avatar" | "city" | "bio">,
+  ) => Promise<boolean>;
+  acceptInvite: (token: string) => Promise<boolean>;
+  getInvite: (token: string) => Promise<Invitation>;
+  renewInvite: () => Promise<string | null>;
   reset: () => Promise<void>;
 };
 const Store = createContext<Context | null>(null);
-export const useGame = () => {
+export function useGame() {
   const c = useContext(Store);
   if (!c) throw new Error("Game provider missing");
   return c;
-};
+}
 export function GameProvider({ children }: { children: ReactNode }) {
-  const api = useRef<GameAPI | null>(null);
-  const [state, setState] = useState<PublicState | null>(null);
-  const [role, setRoleValue] = useState<Role>("A");
+  const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
-  const lock = useRef(false);
-  const [toast, setToast] = useState("");
+  const [online, setOnline] = useState(true);
   const [error, setError] = useState("");
-  const notify = (text: string) => setToast(text);
-  useEffect(() => {
+  const [toast, setToast] = useState("");
+  const lock = useRef(false);
+  const generation = useRef(0);
+  const notify = (s: string) => setToast(s);
+  const current = useRef<SessionSnapshot | null>(null);
+  function apply(next: SessionSnapshot) {
+    const prev = current.current;
+    if (
+      prev?.roomId === next.roomId &&
+      prev &&
+      prev.state.revision > next.state.revision
+    )
+      return;
+    current.current = next;
+    setSnapshot(next);
+    setOnline(true);
+  }
+  async function refresh() {
+    if (lock.current) return;
+    const started = generation.current;
     try {
-      api.current = new MockGameAPI();
-      api.current
-        .get(role)
-        .then(setState)
-        .catch((e) => setError(e.message));
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, []);
-  async function setRole(next: Role) {
-    if (!api.current || lock.current || next === role) return;
-    lock.current = true;
-    setBusy(true);
-    try {
-      const snapshot = await api.current.get(next);
-      // Commit identity and its redacted snapshot together; never render the prior role's projection.
-      setState(snapshot);
-      setRoleValue(next);
-    } catch (e) {
-      notify((e as Error).message);
-    } finally {
-      lock.current = false;
-      setBusy(false);
+      const next = await sharedAPI.session();
+      if (started === generation.current) apply(next);
+    } catch {
+      if (started === generation.current) setOnline(false);
     }
   }
   useEffect(() => {
-    const handler = () => {
-      try {
-        api.current = new MockGameAPI();
-        api.current.get(role).then(setState);
-      } catch (e) {
-        setError((e as Error).message);
-      }
+    let alive = true;
+    initializeSession()
+      .then((s) => {
+        if (alive) apply(s);
+      })
+      .catch((e) => {
+        if (alive) setError(e.message);
+      });
+    return () => {
+      alive = false;
     };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, [role]);
+  }, []);
+  useEffect(() => {
+    if (!snapshot) return;
+    const timer = setInterval(() => {
+      if (!lock.current && document.visibilityState === "visible")
+        void refresh();
+    }, 2000);
+    const focus = () => void refresh();
+    window.addEventListener("focus", focus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", focus);
+    };
+  }, [!!snapshot]);
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => setToast(""), 4000);
-    return () => clearTimeout(id);
+    const timer = setTimeout(() => setToast(""), 4500);
+    return () => clearTimeout(timer);
   }, [toast]);
-  async function run(
-    type: string,
-    payload: Record<string, unknown> = {},
-    message?: string,
-  ) {
-    if (lock.current || !api.current) return null;
+  async function mutate(fn: () => Promise<SessionSnapshot>, message?: string) {
+    if (lock.current) return null;
     lock.current = true;
+    generation.current++;
     setBusy(true);
     try {
-      const result = await api.current.execute(role, {
-        id: uid(),
-        type,
-        payload,
-      });
-      setState(result);
+      const next = await fn();
+      apply(next);
       if (message) notify(message);
-      return result;
+      return next;
     } catch (e) {
       notify((e as Error).message);
       return null;
@@ -107,58 +125,86 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setBusy(false);
     }
   }
+  async function run(
+    type: string,
+    payload: Record<string, unknown> = {},
+    message?: string,
+  ) {
+    const result = await mutate(
+      () =>
+        type === "adopt"
+          ? sharedAPI.create(payload)
+          : sharedAPI.execute({ id: uid(), type, payload }),
+      message,
+    );
+    return result?.state ?? null;
+  }
+  async function saveProfile(
+    p: Pick<Profile, "name" | "avatar" | "city" | "bio">,
+  ) {
+    return !!(await mutate(() => sharedAPI.profile(p), "个人资料已保存"));
+  }
+  async function acceptInvite(token: string) {
+    return !!(await mutate(
+      () => sharedAPI.accept(token),
+      "房间成立！现在可以一起养宠啦",
+    ));
+  }
+  async function renewInvite() {
+    const s = await mutate(() => sharedAPI.renew());
+    return s?.state.couple?.inviteToken ?? null;
+  }
   async function reset() {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      api.current = new MockGameAPI();
-      setState(await api.current.get("A"));
-      setRoleValue("A");
-      setError("");
-      notify("Demo 已重置；旧版 MVP 存档未删除。");
-    } catch (e) {
-      setError((e as Error).message);
-    }
+    notify(
+      "共享房间不能单方面重置。需要结束共同养宠时，请前往双人房间解除绑定。",
+    );
   }
   if (error)
     return (
       <div className="fatal">
-        <h1>存档暂时无法读取</h1>
+        <h1>共享服务暂未连接</h1>
         <p>{error}</p>
-        <button
-          onClick={() => {
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(
-              new Blob([localStorage.getItem(STORAGE_KEY) || ""], {
-                type: "application/json",
-              }),
-            );
-            a.download = "jagat-backup.json";
-            a.click();
-            URL.revokeObjectURL(a.href);
-          }}
-        >
-          导出原始备份
-        </button>
-        <button
-          onClick={() => {
-            if (confirm("确认清除本机 V3 演示数据？此操作不可恢复。"))
-              void reset();
-          }}
-        >
-          重置 Demo
-        </button>
+        <p className="description">
+          双人邀请需要共同的服务端。请使用完整部署站点，或在开发环境启动 npm run
+          dev。
+        </p>
+        <button onClick={() => location.reload()}>重新连接</button>
       </div>
     );
-  if (!state)
+  if (!snapshot)
     return (
       <div className="loading">
         <div className="loading-orb" />
-        <p>团子正在布置我们的小世界…</p>
+        <p>正在连接你的小世界…</p>
       </div>
     );
   return (
-    <Store.Provider value={{ state, role, setRole, run, busy, notify, reset }}>
+    <Store.Provider
+      value={{
+        state: snapshot.state,
+        role: snapshot.role,
+        me: snapshot.me,
+        owner: snapshot.owner,
+        demo: snapshot.demo,
+        roomId: snapshot.roomId,
+        busy,
+        online,
+        notify,
+        refresh,
+        run,
+        saveProfile,
+        acceptInvite,
+        getInvite: (t) => sharedAPI.invitation(t),
+        renewInvite,
+        reset,
+      }}
+    >
       {children}
+      {!online && (
+        <div className="connection-warning" role="status">
+          连接中断，正在重连；资料和房间进度保留在服务端。
+        </div>
+      )}
       {busy && (
         <div className="saving" role="status">
           正在保存…
