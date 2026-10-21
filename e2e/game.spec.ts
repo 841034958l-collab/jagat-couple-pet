@@ -1,7 +1,7 @@
 import { test, expect, type Page, type Browser } from "@playwright/test";
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() =>
-    localStorage.setItem("jagat-care-story-v4", "seen"),
+    localStorage.setItem("jagat-care-story-opening-v4.1", "seen"),
   );
 });
 async function go(p: Page, id: string) {
@@ -29,7 +29,7 @@ async function pair(owner: Page, browser: Browser) {
     viewport: { width: 390, height: 844 },
   });
   await context.addInitScript(() =>
-    localStorage.setItem("jagat-care-story-v4", "seen"),
+    localStorage.setItem("jagat-care-story-opening-v4.1", "seen"),
   );
   const partner = await context.newPage();
   await partner.goto(link);
@@ -226,10 +226,10 @@ test("PNG下载与导出失败反馈", async ({ page, browser }) => {
 
 test("V4首次动画、跳过记忆、首页回看及四主导航", async ({ page }) => {
   await page.goto("/");
-  await page.evaluate(() => localStorage.removeItem("jagat-care-story-v4"));
+  await page.evaluate(() => localStorage.removeItem("jagat-care-story-opening-v4.1"));
   // Override the fixture's init script for this explicit first-visit scenario.
   await page.addInitScript(() =>
-    localStorage.removeItem("jagat-care-story-v4"),
+    localStorage.removeItem("jagat-care-story-opening-v4.1"),
   );
   await page.reload();
   await expect(
@@ -238,7 +238,7 @@ test("V4首次动画、跳过记忆、首页回看及四主导航", async ({ pag
   await page.getByRole("button", { name: "跳过故事" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(
-    await page.evaluate(() => localStorage.getItem("jagat-care-story-v4")),
+    await page.evaluate(() => localStorage.getItem("jagat-care-story-opening-v4.1")),
   ).toBe("seen");
   await expect(page.locator(".mobile-nav button")).toHaveText([
     "首页",

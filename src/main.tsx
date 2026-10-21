@@ -55,15 +55,23 @@ const nav = [
 function App() {
   const [storyOpen, setStoryOpen] = useState(() => {
     try {
-      return localStorage.getItem("jagat-care-story-v4") !== "seen";
+      return (
+        new URLSearchParams(location.search).get("intro") === "1" ||
+        localStorage.getItem("jagat-care-story-opening-v4.1") !== "seen"
+      );
     } catch {
       return true;
     }
   });
   function closeStory() {
     setStoryOpen(false);
+    const url = new URL(location.href);
+    if (url.searchParams.has("intro")) {
+      url.searchParams.delete("intro");
+      history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
     try {
-      localStorage.setItem("jagat-care-story-v4", "seen");
+      localStorage.setItem("jagat-care-story-opening-v4.1", "seen");
     } catch {
       /* browser privacy mode: session-only dismiss */
     }
@@ -138,6 +146,13 @@ function App() {
             {nav.find((n) => n[0] === page)?.[1] || "我们的小窝"}
           </div>
           <div className="header-right">
+            <button
+              className="story-replay intro-replay"
+              onClick={() => setStoryOpen(true)}
+              aria-label="重播开场动画"
+            >
+              ▷ 开场动画
+            </button>
             <button className="story-replay" onClick={() => go("shelter")}>
               ▷ 照护站故事
             </button>

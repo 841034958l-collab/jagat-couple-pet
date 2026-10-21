@@ -4,7 +4,7 @@ test("V4.1深色视觉、宠物表情、独立故事页与完整玩法说明", a
   context,
 }) => {
   await context.addInitScript(() =>
-    localStorage.setItem("jagat-care-story-v4", "seen"),
+    localStorage.setItem("jagat-care-story-opening-v4.1", "seen"),
   );
   await page.goto("/#home");
   await expect(page.locator("main h1")).toBeVisible();
@@ -39,6 +39,41 @@ test("V4.1深色视觉、宠物表情、独立故事页与完整玩法说明", a
   await page.getByRole("button", { name: "关闭弹窗" }).click();
   for (const width of [375, 430, 1440]) {
     await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+    ).toBe(false);
+  }
+});
+
+test("旧版观看记录不挡新版开场，关闭后刷新不重复，可手动和链接重播", async ({
+  page,
+  context,
+}) => {
+  await context.addInitScript(() =>
+    localStorage.setItem("jagat-care-story-v4", "seen"),
+  );
+  await page.goto("/");
+  await expect(
+    page.getByRole("dialog", { name: "Jagat动物照护站" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "跳过故事" }).click();
+  await page.reload();
+  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", { name: "重播开场动画" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "关闭弹窗" }).click();
+  await page.goto("/?intro=1#home");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "跳过故事" }).click();
+  await expect(page).not.toHaveURL(/intro=1/);
+  await page.reload();
+  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  for (const width of [375, 430]) {
+    await page.setViewportSize({ width, height: 844 });
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth > innerWidth,
