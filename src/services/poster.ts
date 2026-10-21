@@ -41,23 +41,29 @@ export async function createPoster(d: PosterData): Promise<Blob> {
   if (!ctx) throw new Error("浏览器不支持图片绘制，请更新浏览器后重试");
   const h = c.height;
   const g = ctx.createLinearGradient(0, 0, 900, h);
-  g.addColorStop(0, "#fff9f3");
-  g.addColorStop(1, "#f3e0ed");
+  g.addColorStop(0, "#101014");
+  g.addColorStop(1, "#2a173c");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 900, h);
-  ctx.strokeStyle = "#dcbbcd";
+  ctx.strokeStyle = "#9b71c9";
   ctx.lineWidth = 3;
   ctx.strokeRect(30, 30, 840, h - 60);
   ctx.textAlign = "center";
-  ctx.fillStyle = "#aa809a";
+  ctx.fillStyle = "#c7ff5f";
   ctx.font = "bold 28px sans-serif";
   ctx.fillText("jagat · 99天养宠计划", 450, 105);
   ctx.font = "bold 54px sans-serif";
-  ctx.fillStyle = "#76566e";
+  ctx.fillStyle = "#f8f3ff";
   ctx.fillText(d.kind, 450, 200);
   const cy = d.format === "wechat" ? 365 : d.format === "9:16" ? 570 : 430;
-  ctx.fillStyle = d.color;
-  ctx.strokeStyle = "#a77c95";
+  const gloss = ctx.createRadialGradient(350, cy - 140, 15, 450, cy, 240);
+  gloss.addColorStop(0, "#f5ecff");
+  gloss.addColorStop(0.22, "#b2e9f5");
+  gloss.addColorStop(0.5, d.color);
+  gloss.addColorStop(0.78, "#9961e9");
+  gloss.addColorStop(1, "#4b2f8a");
+  ctx.fillStyle = gloss;
+  ctx.strokeStyle = "#a97edc";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(290, cy - 60);
@@ -72,8 +78,13 @@ export async function createPoster(d: PosterData): Promise<Blob> {
   ctx.stroke();
   ctx.fillStyle = "#715368";
   for (const x of [390, 510]) {
+    ctx.fillStyle = "#f6f8ff";
     ctx.beginPath();
-    ctx.ellipse(x, cy + 10, 15, 21, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, cy + 10, 37, 43, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#21172e";
+    ctx.beginPath();
+    ctx.ellipse(x, cy + 15, 20, 26, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#fff9f3";
     ctx.beginPath();
@@ -87,7 +98,7 @@ export async function createPoster(d: PosterData): Promise<Blob> {
     ctx.ellipse(x, cy + 54, 24, 13, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = "#95657d";
+  ctx.fillStyle = "#f8eeff";
   ctx.font = "40px sans-serif";
   ctx.fillText("ω", 450, cy + 70);
   let y = cy + 260;
@@ -117,7 +128,7 @@ export async function createPoster(d: PosterData): Promise<Blob> {
     );
   }
   ctx.font = "18px sans-serif";
-  ctx.fillStyle = "#b08fa5";
+  ctx.fillStyle = "#c9b3dc";
   ctx.fillText("虚拟养宠成长纪念，不代表真实支付或补贴承诺。", 450, h - 80);
   ctx.font = "17px sans-serif";
   ctx.fillText("一起养大的，从来不只是一只团子。", 450, h - 48);

@@ -36,6 +36,7 @@ import { Identity } from "./pages/Identity";
 import { AdoptionStory } from "./components/AdoptionStory";
 import "./v3.css";
 import "./v4.css";
+import "./jagat-theme.css";
 const nav = [
   ["home", "首页", House],
   ["tasks", "任务", CalendarDays],
@@ -137,10 +138,10 @@ function App() {
             {nav.find((n) => n[0] === page)?.[1] || "我们的小窝"}
           </div>
           <div className="header-right">
-            <button className="story-replay" onClick={() => setStoryOpen(true)}>
+            <button className="story-replay" onClick={() => go("shelter")}>
               ▷ 照护站故事
             </button>
-            <span className="demo-label">V4 · 模拟体验</span>
+            <span className="demo-label">V4.1 · 模拟体验</span>
             <button
               className="my-profile-chip"
               onClick={() => go("profile")}

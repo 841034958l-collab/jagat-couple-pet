@@ -47,8 +47,8 @@ export function Home({ go }: { go: (p: string) => void }) {
     <>
       <Heading
         eyebrow="99 DAYS, ONE LITTLE LOVE"
-        title="今天，也成为它信任的人。"
-        description="在Jagat动物照护站相遇，用99天认识一个独一无二的小家伙。"
+        title="一起，把日子养酷。"
+        description="99天新手爸妈计划 · 一起解锁小家伙的每一种可爱。"
       >
         <div className="today-badge">
           ☀️{" "}
@@ -111,9 +111,25 @@ export function Home({ go }: { go: (p: string) => void }) {
                     : "今天想收集你们的一个抱抱！"}
             </div>
             <span className="stage-star">✧</span>
-            <Pet action={action} />
+            <Pet action={action} size={260} />
             <span className="stage-heart">♡</span>
             <div className="pet-stage-floor" />
+          </div>
+          <div className="sticker-moods" role="group" aria-label="宠物表情预览">
+            {[
+              ["happy", "乖一点"],
+              ["cool", "酷一点"],
+              ["excited", "嗨起来"],
+              ["sleeping", "困困了"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                className={(action || "happy") === id ? "selected" : ""}
+                onClick={() => setAction(id)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           <div className="pet-info">
             <div>

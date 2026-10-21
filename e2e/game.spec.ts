@@ -247,6 +247,10 @@ test("V4首次动画、跳过记忆、首页回看及四主导航", async ({ pag
     "我的",
   ]);
   await page.getByRole("button", { name: "▷ 照护站故事" }).click();
+  await expect(
+    page.getByRole("heading", { name: "用99天，成为它信任的人。" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "▷ 观看开场动画" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "故事第5幕" }).click();
   await page.getByRole("button", { name: "认识我的小伙伴" }).click();
