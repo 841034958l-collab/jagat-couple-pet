@@ -1,0 +1,311 @@
+/* Shared palette and physical materials across pet, cards, story and tasks. */
+:root {
+  --care-green: #356950;
+  --care-cream: #fff9f3;
+  --care-pink: #f7a8b8;
+  --care-purple: #cdb7f6;
+  --care-mint: #a8dec8;
+}
+body {
+  background: #fff9f3;
+}
+.mobile-nav {
+  justify-content: space-around;
+}
+.mobile-nav button {
+  flex: 1;
+}
+.story-replay {
+  border: 1px solid #e6d9dc;
+  background: #fff7f2;
+  color: #735867;
+  border-radius: 99px;
+  padding: 8px 13px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+.pet-three {
+  position: relative;
+  margin: auto;
+  aspect-ratio: 1/0.95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+}
+.pet-three canvas {
+  max-width: 100%;
+  height: auto !important;
+  display: block;
+}
+.pet-fallback {
+  position: absolute;
+  inset: 15%;
+  background: radial-gradient(circle at 35% 25%, #fff6eb, #f2bdc8 70%, #d79db7);
+  box-shadow:
+    inset -12px -14px 25px #a66b8b44,
+    0 14px 18px #c997a52b;
+  border-radius: 45%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #624b60;
+}
+.pet-fallback:before,
+.pet-fallback:after {
+  content: "";
+  position: absolute;
+  top: -13px;
+  width: 35px;
+  height: 45px;
+  background: #e6b4c5;
+  border-radius: 5px 90% 0 0;
+}
+.pet-fallback:before {
+  left: 8px;
+  transform: rotate(-20deg);
+}
+.pet-fallback:after {
+  right: 8px;
+  transform: rotate(65deg);
+}
+.pet-fallback b {
+  font-size: 30px;
+  z-index: 1;
+}
+.pet-fallback small {
+  font-size: 9px;
+  z-index: 1;
+}
+.story-scene {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(150deg, #f5e3d4, #f8e5eb);
+  border-radius: 24px;
+  margin: 20px 0 16px;
+  min-height: 230px;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  animation: scene-enter 0.7s ease both;
+}
+.story-scene:before {
+  content: "";
+  position: absolute;
+  width: 170px;
+  height: 130px;
+  top: 24px;
+  border: 9px solid #fff7ed;
+  background: linear-gradient(#ccdadd, #f5e4cb);
+  border-radius: 70px 70px 5px 5px;
+  box-shadow: 0 7px 20px #b894a422;
+}
+.story-scene .pet-three {
+  animation: story-arrive 1.5s ease both;
+  z-index: 1;
+}
+.story-scene.together {
+  background: linear-gradient(135deg, #e4eee5, #fff0dd);
+}
+.story-scene.growth {
+  background: linear-gradient(145deg, #e5dcf5, #f9e7ea);
+}
+.story-scene.future {
+  background: linear-gradient(145deg, #d8dfed, #f4d9e5);
+}
+.story-window {
+  position: absolute;
+  font-size: 40px;
+  top: 20px;
+  left: 35px;
+  color: #f1c76e;
+  animation: story-spark 3s ease-in-out infinite;
+}
+.story-cloud {
+  position: absolute;
+  font-size: 45px;
+  right: 25px;
+  top: 65px;
+  opacity: 0.6;
+}
+.story-copy {
+  animation: scene-enter 0.5s ease;
+}
+.story-copy h3 {
+  font-size: 23px;
+  margin: 12px 0;
+}
+.story-copy p {
+  font-size: 15px;
+  line-height: 1.9;
+  min-height: 58px;
+}
+.story-copy small {
+  color: #988391;
+}
+.story-dots {
+  display: flex;
+  gap: 7px;
+  margin-top: 18px;
+}
+.story-dots button {
+  flex: 1;
+  height: 5px;
+  border: 0;
+  border-radius: 4px;
+  background: #e9e0e3;
+  padding: 0;
+}
+.story-dots button.active {
+  background: #bc8fa5;
+}
+.shelter-stage {
+  background: linear-gradient(145deg, #f8e5dc, #ece4f0);
+  border-radius: 22px;
+  min-height: 250px;
+  padding: 12px;
+}
+.care-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(120deg, #edf5ec, #fff9ed);
+}
+.task-icon {
+  font-size: 30px;
+  color: #a984a0;
+  display: inline-block;
+  margin-right: 16px;
+}
+.stage-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #eee7e4;
+  color: #ada3ac;
+  font-size: 12px;
+}
+.stage-row.reached {
+  color: #6a856d;
+}
+.stage-row span {
+  text-align: right;
+}
+.identity-card {
+  background: linear-gradient(145deg, #fff0e3, #f7e9f2);
+  text-align: center;
+}
+.identity-card h2 {
+  font-size: 32px;
+}
+.pet-quote {
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.9;
+  color: #8c6e84;
+}
+.history-list b {
+  max-width: 65%;
+  white-space: normal;
+  text-align: right;
+}
+.big-value small {
+  font-size: 18px;
+}
+.modal {
+  max-height: 92dvh;
+  overflow-y: auto;
+}
+.story-scene .pet-three {
+  margin-bottom: -6px;
+}
+.choice-list button:disabled {
+  opacity: 0.5;
+}
+.identity-card .pet-three {
+  margin-top: 12px;
+}
+@keyframes scene-enter {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes story-arrive {
+  from {
+    transform: translateX(-35px) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes story-spark {
+  50% {
+    transform: scale(1.15) rotate(12deg);
+  }
+}
+@media (max-width: 700px) {
+  .story-replay {
+    font-size: 10px;
+    padding: 7px 9px;
+  }
+  .header-right .demo-label {
+    display: none;
+  }
+  .header-right {
+    gap: 8px;
+  }
+  .story-copy h3 {
+    font-size: 20px;
+  }
+  .care-summary {
+    align-items: start;
+    flex-direction: column;
+  }
+  .stage-row {
+    font-size: 11px;
+  }
+  .modal {
+    padding: 23px !important;
+  }
+  .story-scene {
+    min-height: 215px;
+  }
+  .pet-stats {
+    gap: 7px;
+  }
+  .identity-card .pet-three {
+    max-width: 90%;
+  }
+  .page-heading h1 {
+    font-size: 27px;
+  }
+  .header-right .my-profile-chip b {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-scene,
+  .story-scene .pet-three,
+  .story-copy,
+  .story-window {
+    animation: none !important;
+  }
+}

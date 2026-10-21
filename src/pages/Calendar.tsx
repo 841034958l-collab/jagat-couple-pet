@@ -1,6 +1,7 @@
+import { careScore } from "../domain/care-plan";
 import { useState, useEffect } from "react";
 import { useGame } from "../store";
-import { Heading, Card, money } from "../components/UI";
+import { Heading, Card } from "../components/UI";
 import { calendar, streak } from "../domain/engine";
 import { milestones, story, dimensionNames } from "../domain/config";
 import type { Quality } from "../domain/models";
@@ -111,8 +112,8 @@ export function Calendar() {
               ? "已参与"
               : "未记录"}
             <br />
-            XP +{current.xp} · 活力 +{current.vitality} · 模拟估值变化{" "}
-            {money(current.valuationChange)}
+            XP +{current.xp} · 活力 +{current.vitality} · 近期照护成长分{" "}
+            {careScore(s, selected)} / 100
             <br />
             饱腹记录 {s.nutrition.filter((n) => n.day === selected).length}/2 次
           </p>

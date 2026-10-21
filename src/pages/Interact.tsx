@@ -1,7 +1,7 @@
 import { useState, useLayoutEffect } from "react";
 import { useGame } from "../store";
 import { Heading, Card } from "../components/UI";
-import { Pet } from "../components/Pet";
+import { Pet } from "../components/Pet3D";
 const options = {
   晚餐: ["火锅", "面条", "寿司", "家常菜"],
   心情: ["开心", "平静", "想休息", "想被鼓励"],

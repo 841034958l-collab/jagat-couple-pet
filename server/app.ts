@@ -71,7 +71,7 @@ export async function createApp(options: {
     );
   async function readState(r: RoomRow): Promise<GameState> {
     const state = JSON.parse(r.state) as GameState;
-    if (options.demo === false && state.couple?.status === "bound") {
+    if (state.couple?.status === "bound") {
       const day = naturalDay(state.couple.boundAt, new Date().toISOString());
       if (day && day > state.demoDay) {
         state.demoDay = day;
@@ -469,7 +469,11 @@ export async function createApp(options: {
               "请使用房间邀请流程",
               403,
             );
-            if (["day", "reward_review", "ad"].includes(data.type))
+            if (
+              ["day", "reward_review", "ad", "care_plan_activate"].includes(
+                data.type,
+              )
+            )
               check(options.demo !== false, "正式模式不开放此演示操作", 403);
             if (data.type === "day")
               check(r.owner_id === u.id, "只有房主能调整演示日期", 403);

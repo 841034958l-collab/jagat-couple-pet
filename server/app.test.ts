@@ -372,7 +372,92 @@ test("非演示模式按服务端时间推进，不能请求跳日", async () =>
         .status,
       403,
     );
+    assert.equal(
+      (
+        await a.call(
+          "/api/commands",
+          "POST",
+          command("care_plan_activate", { method: "fee_mock" }),
+        )
+      ).status,
+      403,
+    );
     assert.equal(view.data.demo, false);
+  } finally {
+    await f.close();
+  }
+});
+
+test("V4随机任务服务端验证与双人模拟权益持久化", async () => {
+  const f = await fixture();
+  try {
+    const { a, b, token } = await room(f);
+    await b.call("/api/invites/" + token + "/accept", "POST", {});
+    const state = (await a.call("/api/session")).data.state;
+    const { dailyTasks } = await import("../src/domain/care-plan");
+    const task = dailyTasks(state)[0];
+    assert.equal(
+      (
+        await a.call(
+          "/api/commands",
+          "POST",
+          command("daily_claim", { task: task.id }),
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await b.call(
+          "/api/commands",
+          "POST",
+          command(task.action, task.payload),
+        )
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await a.call(
+          "/api/commands",
+          "POST",
+          command("daily_claim", { task: task.id }),
+        )
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await b.call(
+          "/api/commands",
+          "POST",
+          command("daily_claim", { task: task.id }),
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await a.call(
+          "/api/commands",
+          "POST",
+          command("care_plan_activate", { method: "fee_mock" }),
+        )
+      ).status,
+      200,
+    );
+    const partner = (await b.call("/api/session")).data;
+    assert.equal(partner.state.carePlan.method, "fee_mock");
+    assert.equal(
+      (
+        await b.call(
+          "/api/commands",
+          "POST",
+          command("care_plan_activate", { method: "member_mock" }),
+        )
+      ).status,
+      400,
+    );
   } finally {
     await f.close();
   }

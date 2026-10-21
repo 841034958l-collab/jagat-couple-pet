@@ -3,7 +3,7 @@ import { useGame } from "../store";
 import { Heading, Card, Modal } from "../components/UI";
 import { story, personalities } from "../domain/config";
 import { personality, phase } from "../domain/engine";
-import { Pet } from "../components/Pet";
+import { Pet } from "../components/Pet3D";
 export function Story({ go }: { go: (p: string) => void }) {
   const { state: s, run, busy } = useGame();
   const [chapter, setChapter] = useState<number | null>(null);

@@ -20,7 +20,7 @@ export function Demo({ go }: { go: (p: string) => void }) {
         {[
           ["profile", "🌷 我的个人资料"],
           ["couple", "💌 我的双人房间"],
-          ["valuation", "✧ 宠物估值"],
+          ["valuation", "✧ 照护成长报告"],
           ["calendar", "📆 养宠日历"],
           ["house", "🏡 共同布置小屋"],
           ["rewards", "🎁 成长奖励"],

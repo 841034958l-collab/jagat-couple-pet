@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useGame } from "../store";
-import { Pet } from "../components/Pet";
+import { Pet } from "../components/Pet3D";
 import { Card, Heading } from "../components/UI";
 import type { PetHouse } from "../domain/models";
 export function House() {

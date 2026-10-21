@@ -1,4 +1,9 @@
 import { test, expect, type Page, type Browser } from "@playwright/test";
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() =>
+    localStorage.setItem("jagat-care-story-v4", "seen"),
+  );
+});
 async function go(p: Page, id: string) {
   await p.goto("/#" + id);
   await expect(p.locator("main h1")).toBeVisible();
@@ -23,6 +28,9 @@ async function pair(owner: Page, browser: Browser) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
   });
+  await context.addInitScript(() =>
+    localStorage.setItem("jagat-care-story-v4", "seen"),
+  );
   const partner = await context.newPage();
   await partner.goto(link);
   await partner.getByRole("button", { name: "先设置我的资料" }).click();
@@ -171,8 +179,8 @@ test("两设备分别查看线索并完成寻宠，互送心意与秘密任务",
 });
 for (const [a, b, title] of [
   ["留下宠物", "留下宠物", "永远的家"],
-  ["交给 Jagat", "交给 Jagat", "星球毕业"],
-  ["留下宠物", "交给 Jagat", "再商量一次"],
+  ["回到照护站", "回到照护站", "回站毕业"],
+  ["留下宠物", "回到照护站", "再商量一次"],
 ])
   test(`两人独立秘密选择：${title}`, async ({ page, browser }) => {
     const { partner, context } = await pair(page, browser);
@@ -211,6 +219,95 @@ test("PNG下载与导出失败反馈", async ({ page, browser }) => {
     });
     await page.getByRole("button", { name: "确认生成并保存图片" }).click();
     await expect(page.getByRole("status")).toContainText("图片导出失败");
+  } finally {
+    await context.close();
+  }
+});
+
+test("V4首次动画、跳过记忆、首页回看及四主导航", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.removeItem("jagat-care-story-v4"));
+  // Override the fixture's init script for this explicit first-visit scenario.
+  await page.addInitScript(() =>
+    localStorage.removeItem("jagat-care-story-v4"),
+  );
+  await page.reload();
+  await expect(
+    page.getByRole("dialog", { name: "Jagat动物照护站" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "跳过故事" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem("jagat-care-story-v4")),
+  ).toBe("seen");
+  await expect(page.locator(".mobile-nav button")).toHaveText([
+    "首页",
+    "任务",
+    "商店",
+    "我的",
+  ]);
+  await page.getByRole("button", { name: "▷ 照护站故事" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "故事第5幕" }).click();
+  await page.getByRole("button", { name: "认识我的小伙伴" }).click();
+  await expect(
+    page.getByRole("heading", { name: "用99天，成为它信任的人。" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "模拟9.9元体验" }),
+  ).toBeDisabled();
+});
+test("V4任务领奖防重、权益双方同步、身份卡与照护报告", async ({
+  page,
+  browser,
+}) => {
+  const { partner, context } = await pair(page, browser);
+  try {
+    await go(page, "tasks");
+    await page.getByRole("button", { name: "开始照顾并领取" }).first().click();
+    await expect(
+      page.getByRole("button", { name: "✓ 已完成并领奖" }),
+    ).toHaveCount(1);
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "✓ 已完成并领奖" }),
+    ).toHaveCount(1);
+    await go(page, "shelter");
+    await page.getByRole("button", { name: "模拟9.9元体验" }).click();
+    await expect(
+      page.getByText("✓ 已模拟激活：", { exact: false }),
+    ).toBeVisible();
+    await go(partner, "shelter");
+    await expect(
+      partner.getByText("✓ 已模拟激活：", { exact: false }),
+    ).toBeVisible();
+    await go(page, "identity");
+    await expect(
+      page.getByRole("heading", { name: "团团的小小身份卡" }),
+    ).toBeVisible();
+    await go(page, "valuation");
+    await expect(
+      page.getByRole("heading", { name: "照护成长报告", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("模拟估值");
+    for (const width of [375, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const id of [
+        "home",
+        "tasks",
+        "identity",
+        "valuation",
+        "shelter",
+        "charity",
+      ]) {
+        await go(page, id);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > innerWidth,
+          ),
+        ).toBe(false);
+      }
+    }
   } finally {
     await context.close();
   }

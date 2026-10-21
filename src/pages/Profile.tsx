@@ -87,6 +87,23 @@ export function Profile({ go }: { go: (p: string) => void }) {
             个人资料只属于你；宠物的衣服、配饰、小屋与成长由房间里的两个人共同维护。
           </p>
           <div className="choice-list">
+            <button onClick={() => go("shelter")}>
+              ♡ 领养故事与模拟体验权益
+            </button>
+            <button onClick={() => go("charity")}>🌱 公益说明与项目状态</button>
+            <button
+              disabled={s.couple?.status !== "bound"}
+              onClick={() => go("identity")}
+            >
+              ✦ 宠物身份卡
+            </button>
+            <button
+              disabled={s.couple?.status !== "bound"}
+              onClick={() => go("valuation")}
+            >
+              ↗ 照护成长报告
+            </button>
+            <button onClick={() => go("share")}>▧ 我的分享纪念</button>
             <button onClick={() => go("couple")}>
               💌 {roomId ? "查看我的双人房间" : "创建房间或接受邀请"}
             </button>

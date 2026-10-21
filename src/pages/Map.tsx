@@ -4,7 +4,7 @@ import { useGame } from "../store";
 import { locations } from "../domain/config";
 import { Heading, Card, Modal } from "../components/UI";
 import { MapArt } from "../components/MapArt";
-import { Pet } from "../components/Pet";
+import { Pet } from "../components/Pet3D";
 export function Map({ go }: { go: (p: string) => void }) {
   const { state: s, role, me, run, busy, notify } = useGame();
   const [scale, setScale] = useState(1);

@@ -3,7 +3,7 @@ import { useGame } from "../store";
 import { catalog } from "../domain/config";
 import { Heading, Card, Modal } from "../components/UI";
 import type { ShopItem, ShopCategory } from "../domain/models";
-import { Pet } from "../components/Pet";
+import { Pet } from "../components/Pet3D";
 export function Shop({ go }: { go: (p: string) => void }) {
   const { state: s, run, busy } = useGame();
   useEffect(() => {

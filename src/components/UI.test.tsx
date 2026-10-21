@@ -17,14 +17,14 @@ it("弹窗支持关闭按钮和Escape", () => {
   expect(close).toHaveBeenCalledTimes(2);
   cleanup();
 });
-it("估值说明始终可读，进度条限制显示范围", () => {
+it("照护说明始终可读，进度条限制显示范围", () => {
   render(
     <>
       <Notice />
       <Meter label="活力" value={120} />
     </>,
   );
-  expect(screen.getByText(/游戏内模拟估值，不代表/)).toBeVisible();
+  expect(screen.getByText(/照护与纪念不代表真实现金补贴承诺/)).toBeVisible();
   expect(document.querySelector(".track span")).toHaveStyle({ width: "100%" });
   cleanup();
 });

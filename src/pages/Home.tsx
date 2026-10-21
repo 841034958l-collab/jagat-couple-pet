@@ -1,3 +1,4 @@
+import { careScore, stageName } from "../domain/care-plan";
 import { useState } from "react";
 import {
   Heart,
@@ -11,11 +12,10 @@ import {
   Check,
 } from "lucide-react";
 import { useGame } from "../store";
-import { Pet } from "../components/Pet";
-import { Card, Heading, Meter, Modal, money } from "../components/UI";
+import { Pet } from "../components/Pet3D";
+import { Card, Heading, Meter, Modal } from "../components/UI";
 import {
   qualityScore,
-  valuation,
   level,
   phase,
   personality,
@@ -47,8 +47,8 @@ export function Home({ go }: { go: (p: string) => void }) {
     <>
       <Heading
         eyebrow="99 DAYS, ONE LITTLE LOVE"
-        title="把陪伴，养成独一份的爱。"
-        description="两个人，一只恋爱团子。一起把普通日子过成小小冒险。"
+        title="今天，也成为它信任的人。"
+        description="在Jagat动物照护站相遇，用99天认识一个独一无二的小家伙。"
       >
         <div className="today-badge">
           ☀️{" "}
@@ -92,7 +92,9 @@ export function Home({ go }: { go: (p: string) => void }) {
           <div className="card-top">
             <span className="pill">
               <span className="online-dot" />
-              {bound ? "我们的恋爱团子" : "等待一个共同的家"}
+              {bound
+                ? `我们的团子 · ${stageName(s.demoDay)}`
+                : "等待一个共同的家"}
             </span>
             <span className="subtle">
               {bound ? `DAY ${s.demoDay} / 99` : "尚未启程"}
@@ -142,6 +144,27 @@ export function Home({ go }: { go: (p: string) => void }) {
             }
             suffix={`% · 累计 ${pet?.xp ?? 0} XP`}
           />
+          {bound && (
+            <div className="inline-actions spaced">
+              <button
+                className="primary"
+                disabled={busy}
+                onClick={() => void care("feed", { food: "basic" }, "feed")}
+              >
+                喂食
+              </button>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() => void care("care", { kind: "pet" }, "pet")}
+              >
+                抚摸
+              </button>
+              <button className="secondary" onClick={() => go("identity")}>
+                宠物身份卡 ↗
+              </button>
+            </div>
+          )}
           <div className="pet-stats">
             <span>
               ✦ 活力 <b>{pet?.vitality ?? 70}</b>
@@ -183,17 +206,33 @@ export function Home({ go }: { go: (p: string) => void }) {
           <button className="valuation-preview" onClick={() => go("valuation")}>
             <span>✧</span>
             <div>
-              <p>今天的模拟估值</p>
-              <h3>
-                {pet && bound
-                  ? money(valuation(s.demoDay, qualityScore(pet.quality)))
-                  : "待共同领养"}
-              </h3>
-              <small>仅游戏数值，无现金收购承诺</small>
+              <p>照护成长报告</p>
+              <h3>{pet && bound ? `${careScore(s)} / 100` : "待共同领养"}</h3>
+              <small>近期照护与五维品质，不给宠物标价</small>
             </div>
             <ArrowUpRight size={21} />
           </button>
         </div>
+      </div>
+      <div className="daily-grid spaced">
+        <button className="daily-card lavender" onClick={() => go("tasks")}>
+          <span>✦</span>
+          <div>
+            <small>TODAY’S LITTLE DISCOVERY</small>
+            <h3>今天的任务，和昨天有点不同。</h3>
+            <p>基础照顾、随机小惊喜与等待回应的共同任务。</p>
+          </div>
+          <ArrowUpRight size={20} />
+        </button>
+        <button className="daily-card pink" onClick={() => go("shelter")}>
+          <span>♡</span>
+          <div>
+            <small>JAGAT ANIMAL CARE STATION</small>
+            <h3>从新手爸妈，到它信任的人。</h3>
+            <p>领养故事、模拟体验权益和公益说明。</p>
+          </div>
+          <ArrowUpRight size={20} />
+        </button>
       </div>
       <div className="section-heading">
         <h2>
@@ -270,7 +309,9 @@ export function Home({ go }: { go: (p: string) => void }) {
               ? `养宠自然日 D${s.demoDay} · 连续互动 ${streak(s)} 天`
               : "先邀请 TA，故事才会开始"}
           </h3>
-          <p>我们一起养了它99天。最后一天，你会留下它，还是把它交给 Jagat？</p>
+          <p>
+            我们一起养了它99天。最后一天，你会继续陪伴，还是让它回到照护站？
+          </p>
         </div>
         <button className="secondary" onClick={() => go("calendar")}>
           打开养宠日历 <ArrowUpRight size={16} />

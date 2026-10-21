@@ -159,8 +159,7 @@ export function ActionLink({
   );
 }
 export const money = (cents: number) => `¥${(cents / 100).toFixed(2)}`;
-export const valuationNotice =
-  "游戏内模拟估值，不代表 Jagat 真实现金收购承诺。";
+export const valuationNotice = "照护与纪念不代表真实现金补贴承诺。";
 export function Notice() {
   return <p className="notice">ⓘ {valuationNotice}</p>;
 }

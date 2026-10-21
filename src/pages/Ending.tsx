@@ -1,13 +1,13 @@
+import { careScore } from "../domain/care-plan";
 import { useState } from "react";
 import { useGame } from "../store";
-import { Heading, Card, Notice, money } from "../components/UI";
+import { Heading, Card, Notice } from "../components/UI";
 import { GrowthChart } from "../components/GrowthChart";
-import { Pet } from "../components/Pet";
+import { Pet } from "../components/Pet3D";
 import {
   personality,
   level,
   qualityScore,
-  valuation,
   outcomeTitle,
 } from "../domain/engine";
 export function Ending({ go }: { go: (p: string) => void }) {
@@ -69,15 +69,15 @@ export function Ending({ go }: { go: (p: string) => void }) {
               </div>
             </div>
             <div className="graduation-value">
-              <span>游戏内模拟估值</span>
-              <b>{money(valuation(99, qualityScore(p.quality)))}</b>
+              <span>近期照护成长分</span>
+              <b>{careScore(s)} / 100</b>
             </div>
             <Notice />
           </div>
         </div>
         <GrowthChart />
         <blockquote>
-          亲爱的两位主人：谢谢你们给我起名字，给我留了一盏灯。无论留在家里，还是去星球旅行，我都记得那些一起度过的日子。——{" "}
+          亲爱的两位主人：谢谢你们给我起名字，给我留了一盏灯。无论留在家里，还是回到照护站，我都记得那些一起度过的日子。——{" "}
           {p.name}
         </blockquote>
         <div className="inline-actions">
@@ -127,7 +127,7 @@ export function Ending({ go }: { go: (p: string) => void }) {
                   onClick={() => setChoice("jagat")}
                 >
                   <span>🪐</span>
-                  <h3>交给 Jagat</h3>
+                  <h3>回到照护站</h3>
                   <p>送它去虚拟星球旅行，保留所有成长纪念。</p>
                 </button>
               </div>
@@ -163,7 +163,7 @@ export function Ending({ go }: { go: (p: string) => void }) {
             {outcome.kind === "home"
               ? "两份答案都选择留下。爱心小屋多了一位永久家人，地图冒险继续开放。"
               : outcome.kind === "planet"
-                ? "两份答案都选择交给 Jagat。团子带着99天的回忆，踏上虚拟星球之旅。纪念册一直留在这里。"
+                ? "两份答案都选择回到照护站。团子带着99天的回忆，踏上虚拟星球之旅。纪念册一直留在这里。"
                 : "你们的答案暂时不同。团子先留在地图，等你们慢慢商量。不会强制出售，可以重新共同决定。"}
           </p>
           {outcome.kind === "discuss" ? (
@@ -195,7 +195,7 @@ export function Ending({ go }: { go: (p: string) => void }) {
               </button>
               <div className="inline-actions centered spaced">
                 <button className="secondary" onClick={() => go("rewards")}>
-                  毕业礼包与模拟基金
+                  毕业纪念与模拟补贴
                 </button>
                 <button className="secondary" onClick={() => go("share")}>
                   双方同意后生成结局卡

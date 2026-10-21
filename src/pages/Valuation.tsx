@@ -1,210 +1,102 @@
-import { useEffect } from "react";
 import { useGame } from "../store";
-import { Heading, Card, Meter, Notice, money } from "../components/UI";
-import { qualityScore, valuation, level, personality } from "../domain/engine";
+import { Heading, Card, Meter } from "../components/UI";
+import { qualityScore, level, personality } from "../domain/engine";
+import { careScore, stageName } from "../domain/care-plan";
 import { dimensionNames, weights } from "../domain/config";
 import type { Quality } from "../domain/models";
 export function Valuation() {
-  const { state: s, run } = useGame();
-  useEffect(() => {
-    void run("track", { name: "pet_valuation_view" });
-  }, []);
+  const { state: s } = useGame();
   const p = s.pet!;
-  const q = qualityScore(p.quality);
-  const v = valuation(s.demoDay, q);
-  const yesterday = [...s.valuations]
-    .reverse()
-    .find((v) => v.day === s.demoDay - 1);
-  const daily = Array.from({ length: s.demoDay }, (_, i) => {
-    const records = s.valuations.filter((v) => v.day === i + 1);
-    return records.at(-1);
-  }).filter((v) => !!v);
-  const range = Math.max(1, daily.length - 1);
-  const line = daily
-    .map(
-      (v, i) => `${30 + (i / range) * 640},${190 - (v!.cents / 19900) * 155}`,
-    )
-    .join(" ");
+  const score = careScore(s);
   return (
     <>
       <Heading
-        eyebrow="EVERY LITTLE CARE COUNTS"
-        title="宠物估值实验室"
-        description="价值来自一起度过的日子，以及每一份认真照顾。这里的金额仅用于游戏模拟。"
+        eyebrow="GROWING WITH CARE"
+        title="照护成长报告"
+        description="这里记录的是认真照顾与共同成长，不给小动物标价格，也不预测现金回报。"
       />
-      <Notice />
       <div className="two-col">
         <Card className="valuation-card">
-          <span className="kicker">SIMULATED PET VALUE</span>
-          <h2 className="big-value">{money(v)}</h2>
-          <div className="value-comparison">
-            <span>昨日 {yesterday ? money(yesterday.cents) : "暂无记录"}</span>
-            <b>
-              {yesterday
-                ? `${v >= yesterday.cents ? "+" : ""}${money(v - yesterday.cents)}`
-                : "从今天开始记录"}
-            </b>
-          </div>
-          <div className="value-formula">
-            19.90 + 80 × {s.demoDay}/99 + 99 × {q}/100
-          </div>
-          <p className="description">
-            自然日贡献 {money(Math.round((8000 * s.demoDay) / 99))} · 品质贡献{" "}
-            {money(Math.round((9900 * q) / 100))}
-            <br />
-            上限 ¥199.00 · 商城消费和广告不会直接加分
+          <span className="kicker">RECENT CARE · 近期照护</span>
+          <h2 className="big-value">
+            {score}
+            <small> / 100</small>
+          </h2>
+          <p>
+            {stageName(s.demoDay)} · {personality(s).name} · Lv.{level(p.xp)}
           </p>
-          <div className="pet-stats">
-            <span>
-              等级 <b>Lv.{level(p.xp)}</b>
-            </span>
-            <span>
-              收藏{" "}
-              <b>
-                {q >= 80
-                  ? "星光"
-                  : q >= 50
-                    ? "闪耀"
-                    : q >= 20
-                      ? "珍爱"
-                      : "初遇"}
-              </b>
-            </span>
-            <span>
-              性格 <b>{personality(s).name}</b>
-            </span>
-          </div>
+          <Meter label="近期照护成长分" value={score} />
+          <p className="description">
+            每个完整养宠日结算：喂养+2，随机任务每项+1（最多2）。首个缺席日宽限，连续第二个缺席日起每天−2，下限20。今天未结束不扣分；免费照顾即可恢复。累计XP和已解锁形态不回退。
+          </p>
         </Card>
         <Card>
-          <h2>Day99 预计模拟估值</h2>
-          <h3 className="projection">{money(valuation(99, q))}</h3>
-          <p className="description">
-            假设：养育品质保持当前 {q}{" "}
-            分，养宠自然日达到99天。此为明确假设下的数学推演，不保证未来达到，也不是现金收益。
+          <h2>变化，慢慢看得见。</h2>
+          {[
+            [1, "初遇期", "小心翼翼观察你"],
+            [8, "熟悉期", "开始追玩具，记住名字"],
+            [22, "成长期", "眼神和动作更自在"],
+            [50, "自在期", "形成个性与独特动作"],
+            [78, "信任期", "主动迎接，准备毕业信"],
+          ].map(([day, t, d]) => (
+            <div
+              key={day}
+              className={`stage-row ${s.demoDay >= Number(day) ? "reached" : ""}`}
+            >
+              <b>
+                D{day} · {t}
+              </b>
+              <span>{d}</span>
+            </div>
+          ))}
+          <p className="subtle">
+            3D角色在D21/49/77进化节点改变体型细节、颜色与动作；衣服和配饰可实时展示。
           </p>
-          <h3 className="spaced">最近变化原因</h3>
-          <div className="history-list">
-            {s.valuations
-              .slice(-4)
-              .reverse()
-              .map((v) => (
-                <div key={v.id}>
-                  <span>
-                    D{v.day} · {v.reason}
-                  </span>
-                  <b>{money(v.cents)}</b>
-                </div>
-              ))}
-          </div>
         </Card>
       </div>
       <Card className="spaced">
-        <h2>模拟估值成长曲线</h2>
-        <p className="description">
-          按有记录的游戏日绘制；切换 Demo 日期不伪造过去的照顾记录。
-        </p>
-        <svg
-          viewBox="0 0 700 230"
-          className="chart"
-          role="img"
-          aria-label="估值历史曲线"
-        >
-          <path
-            d="M30 35H670M30 110H670M30 190H670"
-            stroke="#eee5e9"
-            strokeDasharray="5 5"
-          />
-          <text x="30" y="22" fontSize="10" fill="#aaa">
-            ¥199
-          </text>
-          <text x="30" y="217" fontSize="11" fill="#aaa">
-            D1
-          </text>
-          <text x="640" y="217" fontSize="11" fill="#aaa">
-            D{s.demoDay}
-          </text>
+        <h2>照护成长曲线</h2>
+        <svg viewBox="0 0 700 180" role="img" aria-label="照护成长分历史曲线">
+          <line x1="20" y1="160" x2="680" y2="160" stroke="#ddd" />
           <polyline
-            points={line}
+            points={Array.from(
+              { length: s.demoDay },
+              (_, i) =>
+                `${20 + (i / Math.max(1, s.demoDay - 1)) * 660},${160 - careScore(s, i + 1) * 1.35}`,
+            ).join(" ")}
             fill="none"
-            stroke="#cb8fa7"
-            strokeWidth="3"
+            stroke="#cb8fa5"
+            strokeWidth="4"
           />
-          {daily.map((v, i) => (
-            <circle
-              key={v!.id}
-              cx={30 + (i / range) * 640}
-              cy={190 - (v!.cents / 19900) * 155}
-              r="4"
-              fill="#b38dc8"
-            >
-              <title>
-                D{v!.day}: {money(v!.cents)}
-              </title>
-            </circle>
-          ))}
+          {s.demoDay === 1 && (
+            <circle cx="20" cy={160 - score * 1.35} r="5" fill="#cb8fa5" />
+          )}
         </svg>
-      </Card>
-      <div className="section-heading">
-        <h2>
-          五维养育品质 <small>Q = {q}</small>
-        </h2>
-        <span>每个维度每日最多 +10，累计上限100</span>
-      </div>
-      <div className="quality-grid">
-        {(Object.keys(weights) as (keyof Quality)[]).map((k, i) => (
-          <Card key={k}>
-            <span className="quality-symbol">
-              {["🥣", "💗", "🧭", "🤝", "🏡"][i]}
-            </span>
-            <Meter
-              label={dimensionNames[k]}
-              value={p.quality[k]}
-              color={["#e3be72", "#e5a0b2", "#91c5b2", "#b6a0d7", "#a8bccf"][i]}
-            />
-            <p className="description">
-              权重 {weights[k] * 100}% · 综合贡献{" "}
-              {(p.quality[k] * weights[k]).toFixed(2)} 分<br />
-              {
-                [
-                  "合理喂养，每次 +5；每天2次。价格不影响营养分。",
-                  "摸摸、故事、休息、心意回复，每项 +5。",
-                  "地图访问 +5，寻宠 +5，约会 +5。",
-                  "喂养 +2，整理 +3，双人任务/寻宠/约会 +5。",
-                  "免费整理小屋 +10。家具价格不影响评分。",
-                ][i]
-              }
-            </p>
-          </Card>
-        ))}
-      </div>
-      <Card className="spaced">
-        <h3>评分规则与追溯</h3>
-        <p className="description">
-          时间窗口为当前99天养宠周期，累计成长，不因未登录降低。每个维度双方合计每日
-          +10；同一日同一任务按任务上限去重，奖励领取使用唯一里程碑 ID。Demo
-          回到同一天不会清除上限。基础粮永久免费，免费整理即可获得生活环境满额加分，十个合理照顾日可以累计达到五维满分。
+        <p className="subtle">
+          按真实成长事件回算，演示跳日会体现缺席影响，不伪造照顾记录。
         </p>
-        <div className="history-list">
-          {s.events
-            .filter((e) => Object.values(e.quality).some((v) => v > 0))
-            .slice(-10)
-            .reverse()
-            .map((e) => (
-              <div key={e.id}>
-                <span>
-                  D{e.day} · {e.role} · {e.label}
-                </span>
-                <b>
-                  {Object.entries(e.quality)
-                    .filter(([, n]) => n > 0)
-                    .map(
-                      ([k, n]) => `${dimensionNames[k as keyof Quality]} +${n}`,
-                    )
-                    .join(" / ")}
-                </b>
-              </div>
-            ))}
-        </div>
+      </Card>
+      <Card className="spaced">
+        <h2>五维养育品质 · {qualityScore(p.quality)}分</h2>
+        {(Object.keys(weights) as (keyof Quality)[]).map((k) => (
+          <Meter
+            key={k}
+            label={`${dimensionNames[k]} · 权重${weights[k] * 100}%`}
+            value={p.quality[k]}
+          />
+        ))}
+        <p className="description">
+          免费照顾也能获得完整成长。商城消费、会员和广告不直接提高评分或寄养补贴资格。
+        </p>
+      </Card>
+      <Card className="spaced">
+        <h2>寄养补贴 · 独立活动</h2>
+        <p>
+          99天后可共同选择继续陪伴或回到照护站。补贴预算、档位、名额与审核规则尚未确认；当前只有独立的模拟申请，不代表真实现金发放。
+        </p>
+        <p className="notice">
+          旧版历史数值不会转换成应付款，9.9元演示权益不承诺返现。公益收支与活动补贴分开管理。
+        </p>
       </Card>
     </>
   );

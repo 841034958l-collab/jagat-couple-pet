@@ -1,11 +1,11 @@
+import { careScore } from "../domain/care-plan";
 import { useState, useEffect } from "react";
 import { useGame } from "../store";
-import { Pet } from "../components/Pet";
-import { Heading, Card, Notice, money } from "../components/UI";
+import { Pet } from "../components/Pet3D";
+import { Heading, Card, Notice } from "../components/UI";
 import {
   level,
   qualityScore,
-  valuation,
   personality,
   outcomeTitle,
 } from "../domain/engine";
@@ -49,7 +49,7 @@ export function Share() {
         day: s.demoDay,
         level: level(p.xp),
         quality: q,
-        value: money(valuation(s.demoDay, q)),
+        value: `${careScore(s)} / 100`,
         personality: personality(s).name,
         color: personality(s).color,
         summary,
@@ -189,7 +189,7 @@ export function Share() {
               {drawing ? "正在绘制原创海报…" : "确认生成并保存图片"}
             </button>
             <p className="description">
-              所有海报均带模拟估值说明。未读取私人信件，不展示原始秘密投票。图片导出失败会显示错误并允许重试。
+              海报展示照护成长，不代表任何现金补贴承诺。未读取私人信件，不展示原始秘密投票。图片导出失败会显示错误并允许重试。
             </p>
           </Card>
           <div className="poster-preview">

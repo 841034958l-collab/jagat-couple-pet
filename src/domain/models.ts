@@ -223,6 +223,11 @@ export type Challenge = Base & {
 };
 export type GameState = {
   schema: 3;
+  carePlan?: {
+    method: "fee_mock" | "member_mock";
+    activatedAt: string;
+    activatedBy: Role;
+  };
   revision: number;
   demoDay: number;
   users: User[];

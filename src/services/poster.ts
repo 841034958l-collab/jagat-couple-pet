@@ -111,14 +111,14 @@ export async function createPoster(d: PosterData): Promise<Blob> {
   if (d.kind === "99天秘密结局" || d.kind === "30天成长报告") {
     ctx.font = "22px sans-serif";
     ctx.fillText(
-      `养育品质 ${d.quality} · 模拟估值 ${d.value}`,
+      `养育品质 ${d.quality} · 照护成长 ${d.value}`,
       450,
       Math.min(y + 60, h - 140),
     );
   }
   ctx.font = "18px sans-serif";
   ctx.fillStyle = "#b08fa5";
-  ctx.fillText("游戏内模拟估值，不代表 Jagat 真实现金收购承诺。", 450, h - 80);
+  ctx.fillText("虚拟养宠成长纪念，不代表真实支付或补贴承诺。", 450, h - 80);
   ctx.font = "17px sans-serif";
   ctx.fillText("一起养大的，从来不只是一只团子。", 450, h - 48);
   return new Promise((resolve, reject) => {

@@ -30,22 +30,43 @@ import { Ending } from "./pages/Ending";
 import { Demo } from "./pages/Demo";
 import { Profile } from "./pages/Profile";
 import { Celebration } from "./components/Celebration";
+import { Tasks } from "./pages/Tasks";
+import { CareStory, Charity } from "./pages/CareStory";
+import { Identity } from "./pages/Identity";
+import { AdoptionStory } from "./components/AdoptionStory";
 import "./v3.css";
+import "./v4.css";
 const nav = [
-  ["home", "我们的小窝", House],
+  ["home", "首页", House],
+  ["tasks", "任务", CalendarDays],
   ["map", "情侣地图", Compass],
   ["interact", "心动互动", Heart],
-  ["valuation", "宠物估值", ChartNoAxesCombined],
+  ["valuation", "照护成长报告", ChartNoAxesCombined],
   ["calendar", "养宠日历", CalendarDays],
-  ["shop", "团子商店", ShoppingBag],
+  ["shop", "商店", ShoppingBag],
   ["rewards", "成长奖励", Gift],
   ["story", "99天故事", BookOpen],
   ["share", "分享纪念", Sparkles],
   ["couple", "双人房间", Users],
-  ["profile", "我的资料", Users],
+  ["profile", "我的", Users],
   ["demo", "更多功能", Settings2],
 ] as const;
 function App() {
+  const [storyOpen, setStoryOpen] = useState(() => {
+    try {
+      return localStorage.getItem("jagat-care-story-v4") !== "seen";
+    } catch {
+      return true;
+    }
+  });
+  function closeStory() {
+    setStoryOpen(false);
+    try {
+      localStorage.setItem("jagat-care-story-v4", "seen");
+    } catch {
+      /* browser privacy mode: session-only dismiss */
+    }
+  }
   const [page, setPage] = useState(location.hash.slice(1) || "home");
   const { state: s, role, me } = useGame();
   function go(p: string) {
@@ -58,11 +79,29 @@ function App() {
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
   }, []);
-  const allowed = ["home", "couple", "demo", "story", "share", "profile"];
+  const allowed = [
+    "home",
+    "couple",
+    "demo",
+    "story",
+    "share",
+    "profile",
+    "shelter",
+    "charity",
+  ];
   const locked = s.couple?.status !== "bound" && !allowed.includes(page);
   return (
     <div className="app">
       <Celebration />
+      {storyOpen && (
+        <AdoptionStory
+          onClose={closeStory}
+          onStart={() => {
+            closeStory();
+            go("shelter");
+          }}
+        />
+      )}
       <aside className="sidebar">
         <a className="brand" onClick={() => go("home")}>
           <span>j</span>jagat<i>●</i>
@@ -70,17 +109,19 @@ function App() {
         <div className="brand-caption">99天养宠计划</div>
         <span className="nav-caption">OUR LITTLE WORLD</span>
         <nav>
-          {nav.map(([id, label, I]) => (
-            <button
-              className={`nav-item ${page === id ? "active" : ""}`}
-              key={id}
-              onClick={() => go(id)}
-            >
-              <I size={19} />
-              <span>{label}</span>
-              {id === "map" && s.adventure?.status === "active" && <i />}
-            </button>
-          ))}
+          {nav
+            .filter((n) => ["home", "tasks", "shop", "profile"].includes(n[0]))
+            .map(([id, label, I]) => (
+              <button
+                className={`nav-item ${page === id ? "active" : ""}`}
+                key={id}
+                onClick={() => go(id)}
+              >
+                <I size={19} />
+                <span>{label}</span>
+                {id === "map" && s.adventure?.status === "active" && <i />}
+              </button>
+            ))}
         </nav>
         <div className="sidebar-bottom">
           <span>👩🏻 ♡ 👦🏻</span>
@@ -96,7 +137,10 @@ function App() {
             {nav.find((n) => n[0] === page)?.[1] || "我们的小窝"}
           </div>
           <div className="header-right">
-            <span className="demo-label">DEMO · 无真实支付</span>
+            <button className="story-replay" onClick={() => setStoryOpen(true)}>
+              ▷ 照护站故事
+            </button>
+            <span className="demo-label">V4 · 模拟体验</span>
             <button
               className="my-profile-chip"
               onClick={() => go("profile")}
@@ -123,6 +167,14 @@ function App() {
             </Empty>
           ) : page === "home" ? (
             <Home go={go} />
+          ) : page === "tasks" ? (
+            <Tasks go={go} />
+          ) : page === "shelter" ? (
+            <CareStory go={go} replay={() => setStoryOpen(true)} />
+          ) : page === "charity" ? (
+            <Charity />
+          ) : page === "identity" ? (
+            <Identity go={go} />
           ) : page === "profile" ? (
             <Profile go={go} />
           ) : page === "couple" ? (
@@ -164,9 +216,7 @@ function App() {
       </main>
       <nav className="mobile-nav">
         {nav
-          .filter((n) =>
-            ["home", "map", "interact", "shop", "profile"].includes(n[0]),
-          )
+          .filter((n) => ["home", "tasks", "shop", "profile"].includes(n[0]))
           .map(([id, label, I]) => (
             <button
               key={id}
@@ -174,7 +224,7 @@ function App() {
               onClick={() => go(id)}
             >
               <I size={21} />
-              <span>{id === "profile" ? "我" : label.slice(0, 2)}</span>
+              <span>{label}</span>
             </button>
           ))}
       </nav>

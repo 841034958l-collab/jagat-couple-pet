@@ -1,3 +1,4 @@
+import { dailyTasks } from "./care-plan";
 import type {
   GameState,
   Role,
@@ -380,6 +381,38 @@ export function reduceCommand(
         if (old < m.day && day >= m.day)
           event(s, role, "milestone_unlock", { milestone: m.id });
       event(s, role, "demo_day_change", { day });
+      break;
+    }
+    case "care_plan_activate": {
+      requireBound();
+      requireRule(
+        ["fee_mock", "member_mock"].includes(String(p.method)),
+        "请选择模拟体验方式。",
+      );
+      requireRule(!s.carePlan, "本房间已激活模拟体验，不重复开通。");
+      s.carePlan = {
+        method: p.method as "fee_mock" | "member_mock",
+        activatedAt: at,
+        activatedBy: role,
+      };
+      event(s, role, "care_plan_activate_mock");
+      break;
+    }
+    case "daily_claim": {
+      requireBound();
+      const task = dailyTasks(s).find((t) => t.id === p.task);
+      requireRule(task, "不是今日任务，请刷新任务页。");
+      requireRule(
+        s.events.some((e) => e.day === s.demoDay && e.kind === task.kind),
+        "请先完成任务中的照顾动作。",
+      );
+      const key = `daily:${s.demoDay}:${task.id}`;
+      requireRule(
+        !s.events.some((e) => e.key === key),
+        "这个任务今天已经领取过了。",
+      );
+      record(s, role, "daily_claim", `今日任务：${task.title}`, 5, {}, key);
+      s.wallet.hearts += 10;
       break;
     }
     case "feed": {
@@ -1077,5 +1110,5 @@ export function streak(s: Pick<GameState, "events" | "demoDay">) {
   return days;
 }
 export function outcomeTitle(kind: FinalOutcome["kind"]) {
-  return { home: "永远的家", planet: "星球毕业", discuss: "再商量一次" }[kind];
+  return { home: "永远的家", planet: "回站毕业", discuss: "再商量一次" }[kind];
 }
